@@ -25,19 +25,15 @@ def display_images(images, labels, row_count, col_count):
 
 
 if __name__ == "__main__":
-    images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
-    test_images, test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
+    images, one_hot_labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
+    test_images, one_hot_test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
     #display_images(images, labels, 28, 28)
-    num_classes=np.max(labels) + 1
+    num_classes = 10
     num_images = images.shape[0]
     num_pixels = images.shape[1]
 
-    one_hot_labels = np.zeros((num_images, num_classes))
-    one_hot_labels[np.arange(num_images), labels] = 1
-
     num_test_images = test_images.shape[0]
-    one_hot_test_labels = np.zeros((num_test_images, num_classes))
-    one_hot_test_labels[np.arange(num_test_images), test_labels] = 1
+
 
     images = images.astype(np.float32)
     test_images = test_images.astype(np.float32)
