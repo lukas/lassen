@@ -1,8 +1,6 @@
 import tensorflow as tf
 import data
 import numpy as np
-#from tensorflow.examples.tutorials.mnist import input_data
-#mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 images, one_hot_labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
 test_images, one_hot_test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
@@ -12,8 +10,6 @@ num_images = images.shape[0]
 num_pixels = images.shape[1]
 
 num_test_images = len(one_hot_test_labels)
-
-#print(images.shape)
 
 sess = tf.InteractiveSession()
 
