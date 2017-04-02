@@ -1,3 +1,5 @@
+import numpy as np
+
 def load_mnist(data_filename, label_filename):
     images = []
     labels = []
