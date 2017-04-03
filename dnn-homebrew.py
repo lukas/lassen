@@ -219,12 +219,17 @@ def accuracy(network, images, labels):
 
 def sgd(network, images, labels, test_images, test_labels):
     num_epochs = 100
-    num_batches = 100
-    learn_rate = 0.001
-    batch_size = 100
+    batch_size = 1000
+    learn_rate = 0.01
+    num_labels = labels.shape[0]
+
     for _ in range(num_epochs):
-        for _ in range(num_batches):
-          rand_idx = np.floor(np.multiply(np.random.rand(batch_size), len(images))).astype(int)
+        rand_indices = np.random.permutation(num_labels)
+        num_batches = int(num_labels/batch_size)
+        #print("Num Batches", num_batches)
+        for ridx in range(num_batches):
+          rand_idx = rand_indices[(ridx*batch_size):(ridx*(batch_size+1))]
+
           batch_labels = labels[rand_idx,:]
           batch_images = images[rand_idx,:]
 
@@ -267,10 +272,21 @@ def main():
     # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
     # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
 
+    bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
 
     # network = setup_layers_perceptron(images, labels)
     network = setup_layers_two_layer_beast(images, labels)
-    set_random_weights(network)
+
+    network[0].biases = bias0
+    network[0].weights = weights0
+    network[2].biases = bias1
+    network[2].weights = weights1
+
+
+    #print(accuracy(network,images,labels))
+    #print(forward(network,images[0]))
+
+    #set_random_weights(network)
     sgd(network, images, labels, test_images, test_labels)
 
 

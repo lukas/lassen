@@ -22,6 +22,12 @@ def load_mnist(data_filename, label_filename):
 
     return images, labels
 
+def load_normalized_mnist(data_filename, label_filename):
+    images, labels = load_mnist(data_filename, label_filename)
+    images = images.astype(np.float32)
+    images /= 255.0
+    return images, labels
+
 
 def convert_to_one_hot(array, num_classes):
     num_labels = len(array)
