@@ -125,23 +125,6 @@ class MaxPoolLayer(Layer):
         )
 
     def forward(self, input):
-        # print('pool_shape', self.pool_shape, type(self.pool_shape[0]))
-        # print('output_shape', self.output_shape, type(self.output_shape[0]))
-        # print('channels', self.channels)
-        # np.set_printoptions(threshold=10000)
-
-        # # debug - begin - old max pool
-        # old_max_pool_ouput = input.reshape(
-        #     self.channels,
-        #     self.output_shape[0],
-        #     self.pool_shape[0],
-        #     self.output_shape[1],
-        #     self.pool_shape[1]
-        # ).max(axis=(2,4)).flatten()
-        # print('old_max_pool_ouput', old_max_pool_ouput[3000:3010], old_max_pool_ouput.shape)
-        # # debug - end
-
-        # print('input', input.reshape(self.channels,)[0,12:16,12:16])
         input = input \
             .reshape((
                 self.channels,
@@ -160,67 +143,29 @@ class MaxPoolLayer(Layer):
             self.max_pool_indices
         ]
 
-        # print('max_pool_indices', self.max_pool_indices[3000:3010])
-        # print('new_max_pool_output', new_max_pool_output[3000:3010], new_max_pool_output.shape)
-        #
-        # print("input", input)
-        # print("input.shape", input.shape)
-        # print('new_max_pool_output.shape', new_max_pool_output.shape)
         return new_max_pool_output
-        # y = x.reshape((2, 2, 4, 2)).transpose().reshape(8,4)
-        #
-
 
     def backward(self, activations, gradient):
-        # print('backward')
-        # print('activations', activations.shape)
-        # print('gradient', gradient.shape)
-        # print('self.max_pool_indices', self.max_pool_indices.shape)
-        # print("prev grad dim", (
-        #     self.channels * self.output_shape[0] * self.output_shape[1],
-        #     self.pool_shape[0] * self.pool_shape[1]) )
-
         previous_gradient = np.zeros((
             self.channels * self.output_shape[0] * self.output_shape[1],
-            self.pool_shape[0] * self.pool_shape[1]) )
+            self.pool_shape[0] * self.pool_shape[1]))
 
         previous_gradient[
             range(self.channels * self.output_shape[0] * self.output_shape[1]),
-            self.max_pool_indices] = \
-                gradient
-
-        previous_gradient = previous_gradient.reshape(self.channels, self.output_shape[0],
-                        self.output_shape[1], self.pool_shape[0], self.pool_shape[1])
-        #print(previous_gradient.shape)
-        previous_gradient = previous_gradient.transpose((0,1,3,2,4)).flatten()
-
-
-        grad3d = gradient.reshape(
-            self.channels,
-            self.output_shape[0],
-            self.output_shape[1]
-        )
-
-        activ3d = activations.reshape(
-            self.channels,
-            self.input_shape[0],
-            self.input_shape[1]
-        )
-
-        prev3d = previous_gradient.reshape(
-            self.channels,
-            self.input_shape[0],
-            self.input_shape[1]
-        )
-        #
-        # print("Activation", activ3d[0:1,0:2,0:2])
-        # print("Gradient Next", grad3d[0,0,0])
-        # print("Gradient Prev", prev3d[0:1,0:2,0:2])
-
+            self.max_pool_indices
+        ] = gradient
         del self.max_pool_indices
 
+        previous_gradient = previous_gradient \
+            .reshape(
+                self.channels,
+                self.output_shape[0],
+                self.output_shape[1],
+                self.pool_shape[0],
+                self.pool_shape[1]) \
+            .transpose((0,1,3,2,4)) \
+            .flatten()
         return previous_gradient
-
 
     def reset_gradient(self):
         super().reset_gradient()
@@ -246,16 +191,6 @@ class ConvLayer(Layer):
         self.weights = np.zeros(weights_shape)
         self.biases = np.zeros(output_channels)
 
-        # debug - begin
-        print("input_dim", self.input_dim)
-        print("output_dim", self.output_dim)
-        print("img_shape", img_shape)
-        print("kernel_shape", kernel_shape)
-        print("weights shape", self.weights.shape)
-        print("biases shape", self.biases.shape)
-        print()
-        # debug - end
-
     def __str__(self):
         return "ConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
             self.img_shape,
@@ -268,10 +203,6 @@ class ConvLayer(Layer):
 
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
-
-        # print('ConvLayer - forward')
-        # print('input', input)
-        # print('self.input_dim', self.input_dim)
         assert input.shape == self.input_dim
 
         input = input.reshape((input_channels,) + self.img_shape)
@@ -303,11 +234,14 @@ class ConvLayer(Layer):
         activations = activations.reshape((input_channels,) + self.img_shape)
         gradient = gradient.reshape((output_channels,) + self.img_shape)
 
-        #calculate biases one liner
+        # calculate biases
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
         previous_gradient = np.zeros(activations.shape)
+
+        def flat_dot(x, y):
+            return (x * y).sum()
 
         for act_index, activation_channel in enumerate(activations):
             for grad_index, gradient_channel in enumerate(gradient):
@@ -315,13 +249,14 @@ class ConvLayer(Layer):
                 col_offset = (kernel_shape[1]//2)
                 for i in range(-row_offset,row_offset+1):
                     for j in range(-col_offset,col_offset+1):
-                        self.weights_gradient[act_index, grad_index, i+row_offset, j+col_offset] += np.dot(
+                        w_index = act_index,grad_index,i+row_offset,j+col_offset
+                        self.weights_gradient[w_index] += flat_dot(
                             activation_channel[
                                 max(-i, 0):min(rows-i, rows),
-                                max(-j, 0):min(cols-j, cols)].flat,
+                                max(-j, 0):min(cols-j, cols)],
                             gradient_channel[
                                 max(i, 0):min((rows + i), rows),
-                                max(j, 0):min((cols + j), cols)].flat)
+                                max(j, 0):min((cols + j), cols)])
 
                 previous_gradient[act_index] += convolve2d(
                     gradient_channel,
@@ -348,27 +283,6 @@ def setup_layers_two_layer_beast(images, labels):
     ]
 
 def setup_three_layer_with_conv():
-    # channels0 = 2
-    # channels1 = 2
-    # neurons2 = 2
-    # network = [
-    #     ConvLayer((28,28), (5, 5), 1, channels0),
-    #     ReluLayer(28 * 28 * channels0),
-    #     MaxPoolLayer((28, 28), (14, 14), channels0),
-    #
-    #     # ConvLayer((14,14), (5, 5), channels0, channels1),
-    #     # ReluLayer(14 * 14 * channels1),
-    #     # MaxPoolLayer((14, 14), (2, 2), channels1),
-    #     #
-    #     # DenseLayer(7 * 7 * channels1, neurons2),
-    #     # ReluLayer(neurons2),
-    #     #
-    #     # DenseLayer(neurons2, 10),
-    #     # SoftmaxLayer(10),
-    # ]
-    # assert_layer_dimensions_align(network)
-    # return network
-
     channels0 = 32
     channels1 = 64
     neurons2 = 1024
@@ -387,9 +301,12 @@ def setup_three_layer_with_conv():
         DenseLayer(neurons2, 10),
         SoftmaxLayer(10),
     ]
+
     assert_layer_dimensions_align(network)
+    print()
     print_num_params(network)
-    exit()
+    print()
+
     return network
 
 def assert_layer_dimensions_align(network):
@@ -419,7 +336,6 @@ def assert_layer_dimensions_align(network):
 # =================================================================
 
 def print_num_params(network):
-
     def print_params(*params):
         params = list(params)
         for index, param in enumerate(params):
@@ -507,7 +423,7 @@ def sgd(network, images, labels, test_images, test_labels):
           for layer in network:
             layer.step(learn_rate * (1.0/batch_size))
 
-          sys.stdout.write("Loss: %.3f  \r" % (l/batch_size) )
+          sys.stdout.write("Loss: %.3f  \r" % (l) )
           sys.stdout.flush()
 
         print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
@@ -519,10 +435,10 @@ def set_random_weights(network):
     for layer in network:
         if hasattr(layer, 'weights'):
             layer.weights = np.abs(np.random.normal(
-                scale=0.01,
+                scale=0.1,
                 size=layer.weights.shape))
             layer.biases = np.abs(np.random.normal(
-                scale=0.01,
+                scale=0.1,
                 size=layer.biases.shape))
 
 def set_unit_weights(network):
@@ -567,31 +483,17 @@ def main():
     images = images / 255.0
     test_images = test_images / 255.0
 
-
     # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
     # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
-
     # bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
 
-    # network = setup_layers_perceptron(images, labels)
-    # network = setup_layers_two_layer_beast(images, labels)
     network = setup_three_layer_with_conv()
     set_random_weights(network)
 
+    test_gradient(network, images, labels)
+    exit()
 
-    # print("Loss new network", gradient_batch(network, images[:1], labels[:1]))
-    # print("Loss old network", gradient_batch(old_network, images[:1], labels[:1]))
-    #test_gradient(network, images, labels)
-    #
-    # print("New Network Conv Gradient", network[0].weights_gradient)
-    # print("Old Network Conv Gradient", old_network[0].weights_gradient)
-
-    #t1 = datetime.datetime.now()
     sgd(network, images, labels, test_images, test_labels)
-    #t2 = datetime.datetime.now()
-
-    print("Time New", t2-t1)
-
     #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
 
 
