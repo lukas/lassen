@@ -180,6 +180,11 @@ class ConvLayer(Layer):
                         mode='same'
                     )
 
+        print("output.shape", output.shape)
+        print("biases.shape", self.biases.shape)
+        output += self.biases.reshape((-1, 1, 1))
+        # import sys
+        # sys.exit(-1)
 
         output = output.flatten()
         assert output.shape == self.output_dim
@@ -202,6 +207,11 @@ class ConvLayer(Layer):
         # # debug - end
 
         # biases gradient
+        print("biases_gradient.shape", self.biases_gradient.shape)
+        print("gradient.shape", gradient.shape)
+        print("gradient.sum(axis=(1,2)).shape", gradient.sum(axis=(1,2)).shape)
+        import sys
+        sys.exit(-1)
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
@@ -368,19 +378,19 @@ def test_gradient(network, images, labels):
     layer = network[0]
     loss = gradient_batch(network, images[1:5], labels[1:5])
     max_gradient_index = np.unravel_index(
-        np.argmax(layer.weight_gradient),
-        layer.weight_gradient.shape
+        np.argmax(layer.biases_gradient),
+        layer.biases_gradient.shape
     )
 
     print("Max Gradient Index", max_gradient_index)
-    print("New Gradient", layer.weight_gradient[max_gradient_index])
+    print("New Gradient", layer.biases_gradient[max_gradient_index])
 
-    layer.weights[max_gradient_index] += epsilon
+    layer.biases[max_gradient_index] += epsilon
     loss2 = gradient_batch(network, images[1:5], labels[1:5])
     print("Manual Gradient", (loss2 - loss) / epsilon)
 
     # move things back
-    layer.weights[max_gradient_index] -= epsilon
+    layer.biases[max_gradient_index] -= epsilon
 
 
 def main():
