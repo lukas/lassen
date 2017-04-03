@@ -142,34 +142,10 @@ class ConvLayer(Layer):
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
 
-        # # debug - begin
-        # print("CHECKING DIMS", self)
-        # print("weights.shape", self.weights.shape)
-        # print("input_channels", input_channels)
-        # print("output_channels", output_channels)
-        # print("img_shape", self.img_shape)
-        # print("input.shape", input.shape)
-        # print("input_dim", self.input_dim)
-        # # debug - end
-
         assert input.shape == self.input_dim
 
         input = input.reshape((input_channels,) + self.img_shape)
         output = np.zeros((output_channels,) + self.img_shape)
-
-        # for input_index, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
-        #     for output_index, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
-        #         # # debug - begin
-        #         # print("computing channel %i->%i on %s->%s through %s with %s" % (
-        #         #     input_index,
-        #         #     output_index,
-        #         #     input_channel.shape,
-        #         #     output_channel.shape,
-        #         #     convolve2d(input_channel, kernel, mode='same').shape,
-        #         #     kernel.shape))
-        #         # # debug - end
-        #
-        #         output_channel += convolve2d(input_channel, kernel, mode='same')
 
         for input_index, input_channel in enumerate(input):
             for output_index, output_channel in enumerate(output):
@@ -180,11 +156,7 @@ class ConvLayer(Layer):
                         mode='same'
                     )
 
-        # print("output.shape", output.shape)
-        # print("biases.shape", self.biases.shape)
         output += self.biases.reshape((-1, 1, 1))
-        # import sys
-        # sys.exit(-1)
 
         output = output.flatten()
         assert output.shape == self.output_dim
@@ -598,8 +570,8 @@ def main():
     set_random_weights(old_network)
     copy_weights(old_network, network)
 
-    print(forward(network, images[0]))
-    print(forward(old_network, images[0]))
+    print(gradient_batch(network, images[:1], labels[:1]))
+    print(gradient_batch(old_network, images[:1], labels[:1]))
     assert np.array_equal(network[0].weights, old_network[0].weights)
     assert np.array_equal(network[0].biases, old_network[0].biases)
     exit()
