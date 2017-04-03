@@ -180,8 +180,8 @@ class ConvLayer(Layer):
                         mode='same'
                     )
 
-        print("output.shape", output.shape)
-        print("biases.shape", self.biases.shape)
+        # print("output.shape", output.shape)
+        # print("biases.shape", self.biases.shape)
         output += self.biases.reshape((-1, 1, 1))
         # import sys
         # sys.exit(-1)
@@ -207,11 +207,11 @@ class ConvLayer(Layer):
         # # debug - end
 
         # biases gradient
-        print("biases_gradient.shape", self.biases_gradient.shape)
-        print("gradient.shape", gradient.shape)
-        print("gradient.sum(axis=(1,2)).shape", gradient.sum(axis=(1,2)).shape)
-        import sys
-        sys.exit(-1)
+        # print("biases_gradient.shape", self.biases_gradient.shape)
+        # print("gradient.shape", gradient.shape)
+        # print("gradient.sum(axis=(1,2)).shape", gradient.sum(axis=(1,2)).shape)
+        # import sys
+        # sys.exit(-1)
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
@@ -279,8 +279,8 @@ def setup_three_layer_with_conv():
     return [
         ConvLayer((28,28), (5, 5), 1, intermediate_channels),
         ReluLayer(28 * 28 * intermediate_channels),
-        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        # ReluLayer(28 * 28 * intermediate_channels),
+        ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        ReluLayer(28 * 28 * intermediate_channels),
         DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
         DenseLayer(intermediate_layer_size, 10),
@@ -372,10 +372,10 @@ def set_random_weights(network):
     for layer in network:
         if hasattr(layer, 'weights'):
             layer.weights = np.random.normal(size=layer.weights.shape)
-            layer.baises = np.random.normal(size=layer.baises.shape)
+            layer.biases = np.random.normal(size=layer.biases.shape)
 
 def test_gradient(network, images, labels):
-    epsilon = 0.005
+    epsilon = 0.0005
     layer = network[0]
     loss = gradient_batch(network, images[1:5], labels[1:5])
     max_gradient_index = np.unravel_index(
