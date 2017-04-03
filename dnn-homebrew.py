@@ -7,10 +7,10 @@ class Layer:
     def __init__(self, input_dim, output_dim):
         self.input_dim = input_dim
         self.output_dim = output_dim
-        if type(self.input_dim) == int:
-            self.input_dim = (input_dim,)
-        if type(self.output_dim) == int:
-            self.output_dim = (output_dim,)
+        if type(self.input_dim) != tuple:
+            self.input_dim = (int(input_dim),)
+        if type(self.output_dim) != tuple:
+            self.output_dim = (int(output_dim),)
 
     def has_weights(self):
         return hasattr(self, 'weights') and hasattr(self, 'biases')
@@ -28,6 +28,13 @@ class Layer:
 class SoftmaxLayer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim, input_dim)
+
+    def __str__(self):
+        return "SoftmaxLayer(%s) [%s -> %s]" % (
+            self.input_dim[0],
+            self.input_dim,
+            self.output_dim
+        )
 
     def log_softmax(self, w):
         assert len(w.shape) == 1
@@ -49,6 +56,14 @@ class DenseLayer(Layer):
         self.weights = np.zeros((input_dim, output_dim))
         self.biases = np.zeros(output_dim)
 
+    def __str__(self):
+        return "DenseLayer(%s, %s) [%s -> %s]" % (
+            self.input_dim[0],
+            self.output_dim[0],
+            self.input_dim,
+            self.output_dim
+        )
+
     def forward(self, input):
         return np.dot(self.weights.T, input) + self.biases
 
@@ -66,6 +81,13 @@ class DenseLayer(Layer):
 class ReluLayer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim, input_dim)
+
+    def __str__(self):
+        return "ReluLayer(%s) [%s -> %s]" % (
+            self.input_dim,
+            self.input_dim,
+            self.output_dim
+        )
 
     def forward(self, input):
         # print("input", input)
@@ -97,27 +119,40 @@ class ConvLayer(Layer):
         self.weights = np.zeros(weights_shape)
         self.biases = np.zeros(output_channels)
 
-        # print out the shapes
+        # debug - begin
         print("input_dim", self.input_dim)
         print("output_dim", self.output_dim)
         print("img_shape", img_shape)
         print("kernel_shape", kernel_shape)
         print("weights shape", self.weights.shape)
         print("biases shape", self.biases.shape)
+        print()
+        # debug - end
+
+    def __str__(self):
+        return "ConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
+            self.img_shape,
+            self.weights.shape[-2:], # kernel_shape,
+            self.weights.shape[0],   # input_channels,
+            self.weights.shape[1],   # output_channels
+            self.input_dim,
+            self.output_dim
+        )
 
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
         input = input.reshape((input_channels,) + self.img_shape)
         output = np.zeros((output_channels,) + self.img_shape)
 
-        for input_idx, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
-            for output_idx, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
+        for input_index, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
+            for output_index, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
                 # debug - begin
-                print("computing channel %i->%i on %s->%s with %s" % (
+                print("computing channel %i->%i on %s->%s through %s with %s" % (
                     input_index,
                     output_index,
                     input_channel.shape,
                     output_channel.shape,
+                    convolve2d(input_channel, kernel).shape,
                     kernel.shape))
                 # debug - end
 
@@ -147,11 +182,10 @@ class ConvLayer(Layer):
             for act_index, activation_channel in enumerate(activations):
                 for grad_index, gradient_channel in enumerate(gradient):
                     weight_index = (act_index, grad_index) + kernel_index
-                    self.weight_gradient[*weight_index] +=
-                        np.dot(
-                            activation_channel.flat,
-                            convolve2d(gradient_channel, kernel).flat
-                        )
+                    self.weight_gradient[weight_index] += np.dot(
+                        activation_channel.flat,
+                        convolve2d(gradient_channel, kernel).flat
+                    )
 
         # propogate the gradient backwards
         return self.forward(gradient.reshape((-1,)))
@@ -176,6 +210,27 @@ def setup_layers_two_layer_beast(images, labels):
         DenseLayer(intermediate_layer_size, labels.shape[1]),
         SoftmaxLayer(labels.shape[1]),
     ]
+
+def setup_three_layer_with_conv():
+    intermediate_layer_size = 50
+    return [
+        ConvLayer((28,28), (5, 5), 1, 1),
+        ReluLayer(28 * 28),
+        DenseLayer(28 * 28, intermediate_layer_size),
+        ReluLayer(intermediate_layer_size),
+        DenseLayer(intermediate_layer_size, 10),
+        SoftmaxLayer(10),
+    ]
+
+def assert_layer_dimensions_align(network):
+    output_dim = network[0].output_dim
+    print(network[0])
+    for layer in network[1:]:
+        input_dim = layer.input_dim
+        print("   %s == %s" % (input_dim, output_dim))
+        print(layer)
+        assert input_dim == output_dim, "%s != %s" % (input_dim, output_dim)
+        output_dim = layer.output_dim
 
 def forward(network, image):
     input = image
@@ -246,6 +301,7 @@ def sgd(network, images, labels, test_images, test_labels):
         print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
             ( 100 * accuracy(network, images, labels),
               100 * accuracy(network, test_images, test_labels) ))
+        test_gradient(network, images, labels)
 
 def set_random_weights(network):
     for layer in network:
@@ -255,7 +311,7 @@ def set_random_weights(network):
 def test_gradient(network, images, labels):
     epsilon = 0.005
     loss = gradient_batch(network, images[1:5], labels[1:5])
-    dense_layer = network[0]
+    dense_layer = network[2]
     print("New Gradient", dense_layer.weight_gradient[200,3])
 
     dense_layer.weights[200,3] += epsilon
@@ -267,13 +323,14 @@ def test_gradient(network, images, labels):
 
 
 def main():
-    ConvLayer((100,400), (5, 5), 32, 64)
-    return
+    # ConvLayer((100,400), (5, 5), 32, 64)
+    # return
 
     images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
     test_images, test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
     images = images / 255.0
     test_images = test_images / 255.0
+
 
     # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
     # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
@@ -281,8 +338,11 @@ def main():
     # bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
 
     # network = setup_layers_perceptron(images, labels)
-    network = setup_layers_two_layer_beast(images, labels)
+    # network = setup_layers_two_layer_beast(images, labels)
+    network = setup_three_layer_with_conv()
+    assert_layer_dimensions_align(network)
     set_random_weights(network)
+    test_gradient(network, images, labels)
 
     # network[0].biases = bias0
     # network[0].weights = weights0
