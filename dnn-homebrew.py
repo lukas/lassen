@@ -100,9 +100,7 @@ def log_softmax(w):
     assert len(w.shape) == 1
     max_weight = np.max(w, axis=0)
     rightHandSize = np.log(np.sum(np.exp(w - max_weight), axis=0))
-
     return w - (max_weight + rightHandSize)
-
 
 def setup_layers_perceptron(images, labels):
     layer0 = DenseLayer(images.shape[1], labels.shape[1])
@@ -211,6 +209,7 @@ def main():
 
     # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
     # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
+
 
     # network = setup_layers_perceptron(images, labels)
     network = setup_layers_two_layer_beast(images, labels)
