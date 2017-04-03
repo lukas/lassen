@@ -388,6 +388,8 @@ def setup_three_layer_with_conv():
         SoftmaxLayer(10),
     ]
     assert_layer_dimensions_align(network)
+    print_num_params(network)
+    exit()
     return network
 
 def assert_layer_dimensions_align(network):
@@ -395,10 +397,52 @@ def assert_layer_dimensions_align(network):
     print(network[0])
     for layer in network[1:]:
         input_dim = layer.input_dim
-        print("   %s == %s" % (input_dim, output_dim))
         print(layer)
         assert input_dim == output_dim, "%s != %s" % (input_dim, output_dim)
         output_dim = layer.output_dim
+
+
+# _________________________________________________________________
+# Layer (type)                 Output Shape              Param #
+# =================================================================
+# conv2d_1 (Conv2D)            (None, 24, 24, 32)        832
+# _________________________________________________________________
+# max_pooling2d_1 (MaxPooling2 (None, 12, 12, 32)        0
+# _________________________________________________________________
+# conv2d_2 (Conv2D)            (None, 8, 8, 64)          51264
+# _________________________________________________________________
+# flatten_1 (Flatten)          (None, 4096)              0
+# _________________________________________________________________
+# dense_1 (Dense)              (None, 1024)              4195328
+# _________________________________________________________________
+# final (Dense)                (None, 10)                10250
+# =================================================================
+
+def print_num_params(network):
+
+    def print_params(*params):
+        params = list(params)
+        for index, param in enumerate(params):
+            if type(param) == int:
+                params[index] = format(param, ',d')
+        print("%-15s %11s %11s %11s" % tuple(params))
+
+    print_params("Layer", "Weights", "Biases", "Total")
+    print("-" * 51)
+    total_weights, total_biases = 0, 0
+    for layer in network:
+        if layer.has_weights():
+            num_weights = int(np.prod(layer.weights.shape))
+            num_biases = int(np.prod(layer.biases.shape))
+            num_both = num_weights + num_biases
+            total_weights += num_weights
+            total_biases += num_biases
+        else:
+            num_weights, num_biases, num_both = '--', '--', '--'
+        print_params(type(layer).__name__, num_weights, num_biases, num_both)
+    print("-" * 51)
+    print_params("TOTAL", total_weights, total_biases,
+        total_weights + total_biases)
 
 def forward(network, image):
     input = image
@@ -499,19 +543,19 @@ def test_gradient(network, images, labels):
     layer = network[0]
     loss = gradient_batch(network, images[:1], labels[:1])
     max_gradient_index = np.unravel_index(
-        np.argmax(np.abs(layer.biases_gradient)),
-        layer.biases_gradient.shape
+        np.argmax(np.abs(layer.weights_gradient)),
+        layer.weights_gradient.shape
     )
 
     print("Max Gradient Index", max_gradient_index)
-    print("New Gradient", layer.biases_gradient[max_gradient_index])
+    print("New Gradient", layer.weights_gradient[max_gradient_index])
 
-    layer.biases[max_gradient_index] += epsilon
+    layer.weights[max_gradient_index] += epsilon
     loss2 = gradient_batch(network, images[:1], labels[:1])
     print("Manual Gradient", (loss2 - loss) / epsilon)
 
     # move things back
-    layer.biases[max_gradient_index] -= epsilon
+    layer.weights[max_gradient_index] -= epsilon
 
 
 def main():
