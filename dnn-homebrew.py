@@ -595,10 +595,10 @@ def main():
     print(gradient_batch(network, images[:1], labels[:1]))
     print(gradient_batch(old_network, images[:1], labels[:1]))
     test_gradient(network, images, labels)
-    test_gradient(old_network, images, labels)
+    #test_gradient(old_network, images, labels)
 
-    assert np.array_equal(network[0].weights, old_network[0].weights)
-    assert np.array_equal(network[0].biases, old_network[0].biases)
+    #assert np.array_equal(network[0].weights, old_network[0].weights)
+    #assert np.array_equal(network[0].biases, old_network[0].biases)
     exit()
     # network[0].biases = bias0
     # network[0].weights = weights0
