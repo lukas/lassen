@@ -1,5 +1,6 @@
 import data, weights
 import numpy as np
+import sys
 
 def log_softmax(w):
     assert len(w.shape) == 1
@@ -13,11 +14,6 @@ def gradient(input, output_gradient):
 
 
 def loss(images, labels, weights, bias):
-    print(images.shape)
-    print(labels.shape)
-    print(weights.shape)
-    print(bias.shape)
-
     likelihoods = np.dot(images, weights) + bias
 
     sum_grad_weights = np.zeros(weights.shape)
@@ -43,17 +39,34 @@ def loss(images, labels, weights, bias):
         sum_grad_weights += grad_weights
         sum_grad_bias += grad_bias
 
-
-        # # print(log_likelihoods)
-        # print("%s %s" % (np.argmax(log_likelihoods), np.argmax(labels[i])))
-        # # print(np.sum(np.exp(log_softmax(likelihoods[i]))))
-        # # print
-
-    print(sum_loss)
-    print(sum_grad_weights)
-    print(sum_grad_bias)
-
     return sum_loss, sum_grad_weights, sum_grad_bias
+
+def accuracy(images, labels, w, b):
+    likelihoods = np.dot(images, w) + b
+    guess = np.argmax(likelihoods, axis=1)
+    answer = np.argmax(labels, axis=1)
+    return np.sum(np.equal(guess, answer))/len(guess)
+
+def sgd(images, labels, w, b, test_images, test_labels):
+    num_epochs = 100
+    num_batches = 100
+    learn_rate = 0.001
+    batch_size = 100
+    for _ in range(num_epochs):
+        for _ in range(num_batches):
+          rand_idx = np.floor(np.multiply(np.random.rand(batch_size), len(images))).astype(int)
+          batch_labels = labels[rand_idx,:]
+          batch_images = images[rand_idx,:]
+
+          (l, grad_weights, grad_bias) = loss(batch_images, batch_labels, w, b)
+          w -= grad_weights / batch_size * learn_rate
+          b -= grad_bias / batch_size * learn_rate
+          sys.stdout.write("Loss: %.3f  \r" % (l) )
+          sys.stdout.flush()
+
+        print("Train Accuracy %.2f%% " % (100*accuracy(images, labels, w, b)), end="")
+        print("Test Accuracy  %.2f%% " % (100*accuracy(test_images, test_labels, w, b)))
+
 
 
 def main():
@@ -73,7 +86,7 @@ def main():
 
     epsilon = 0.0001
 
-    (l, grad_weights, grad_bias) = loss(image_batch, label_batch, w, b)
+    sgd(images, labels, w, b, test_images, test_labels)
 
     #(l2, grad_weights, grad_bias) = loss(image_batch, label_batch, w, b)
 
