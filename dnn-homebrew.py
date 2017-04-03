@@ -176,6 +176,24 @@ class MaxPoolLayer(Layer):
         print('activations', activations.shape)
         print('gradient', gradient.shape)
         print('self.max_pool_indices', self.max_pool_indices.shape)
+        previous_gradient = np.zeros(activations.shape)
+        _ = gradient \
+            .reshape((
+                self.channels,
+                self.output_shape[0],
+                self.pool_shape[0],
+                self.output_shape[1],
+                self.pool_shape[1])) \
+            .transpose((0,1,3,2,4)) \
+            .reshape((
+                self.channels * self.output_shape[0] * self.output_shape[1],
+                self.pool_shape[0] * self.pool_shape[1]))
+        assert not hasattr(self, 'max_pool_indices')
+        self.max_pool_indices = input.argmax(axis=1)
+        new_max_pool_output = input[
+            range(self.channels * self.output_shape[0] * self.output_shape[1]),
+            self.max_pool_indices
+        ]
         exit()
 
 
