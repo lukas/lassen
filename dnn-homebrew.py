@@ -411,25 +411,6 @@ def setup_layers_two_layer_beast(images, labels):
         SoftmaxLayer(labels.shape[1]),
     ]
 
-def old_setup_three_layer_with_conv():
-    intermediate_layer_size = 50
-    intermediate_channels = 1
-    network = [
-        #OldConvLayer((28,28), (5, 5), 1, intermediate_channels),
-        #ReluLayer(28 * 28 * intermediate_channels),
-        #OldConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        #ReluLayer(28 * 28 * intermediate_channels),
-        OldConvLayer((28,28), (1, 1), 1, 1),
-        ReluLayer(28 * 28 * intermediate_channels),
-
-        DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
-        ReluLayer(intermediate_layer_size),
-        DenseLayer(intermediate_layer_size, 10),
-        SoftmaxLayer(10),
-    ]
-    assert_layer_dimensions_align(network)
-    return network
-
 def setup_three_layer_with_conv(flag):
     if flag == 'old':
         MyConvLayer = OldConvLayer
