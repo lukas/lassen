@@ -272,15 +272,16 @@ def main():
     # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
     # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
 
-    bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
+    # bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
 
     # network = setup_layers_perceptron(images, labels)
     network = setup_layers_two_layer_beast(images, labels)
+    set_random_weights(network)
 
-    network[0].biases = bias0
-    network[0].weights = weights0
-    network[2].biases = bias1
-    network[2].weights = weights1
+    # network[0].biases = bias0
+    # network[0].weights = weights0
+    # network[2].biases = bias1
+    # network[2].weights = weights1
 
 
     #print(accuracy(network,images,labels))
