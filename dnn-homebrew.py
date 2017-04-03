@@ -552,7 +552,7 @@ def copy_weights(network1, network2 ):
 def test_gradient(network, images, labels):
     epsilon = 0.0005
     layer = network[0]
-    loss = gradient_batch(network, images[1:5], labels[1:5])
+    loss = gradient_batch(network, images[:1], labels[:1])
     max_gradient_index = np.unravel_index(
         np.argmax(layer.weights_gradient),
         layer.weights_gradient.shape
@@ -562,7 +562,7 @@ def test_gradient(network, images, labels):
     print("New Gradient", layer.weights_gradient[max_gradient_index])
 
     layer.weights[max_gradient_index] += epsilon
-    loss2 = gradient_batch(network, images[1:5], labels[1:5])
+    loss2 = gradient_batch(network, images[:1], labels[:1])
     print("Manual Gradient", (loss2 - loss) / epsilon)
 
     # move things back
@@ -595,7 +595,7 @@ def main():
     print(gradient_batch(network, images[:1], labels[:1]))
     print(gradient_batch(old_network, images[:1], labels[:1]))
     test_gradient(network, images, labels)
-    #test_gradient(old_network, images, labels)
+    test_gradient(old_network, images, labels)
 
     #assert np.array_equal(network[0].weights, old_network[0].weights)
     #assert np.array_equal(network[0].biases, old_network[0].biases)
