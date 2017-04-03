@@ -172,22 +172,11 @@ class ConvLayer(Layer):
         activations = activations.reshape((input_channels,) + self.img_shape)
         gradient = gradient.reshape((output_channels,) + self.img_shape)
 
-        # # debug - begin
-        # print("backward input_channels", input_channels)
-        # print("backward output_channels", output_channels)
-        # print("backward kernel_shape", kernel_shape)
-        # # debug - end
-
-        # biases gradient
-        # print("biases_gradient.shape", self.biases_gradient.shape)
-        # print("gradient.shape", gradient.shape)
-        # print("gradient.sum(axis=(1,2)).shape", gradient.sum(axis=(1,2)).shape)
-        # import sys
-        # sys.exit(-1)
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
         previous_gradient = np.zeros(activations.shape)
+
         for act_index, activation_channel in enumerate(activations):
             for grad_index, gradient_channel in enumerate(gradient):
                 for indx, kernel in enumerate(np.eye(np.prod(kernel_shape))):
@@ -405,8 +394,8 @@ def old_setup_three_layer_with_conv():
     return [
         OldConvLayer((28,28), (5, 5), 1, intermediate_channels),
         ReluLayer(28 * 28 * intermediate_channels),
-        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        # ReluLayer(28 * 28 * intermediate_channels),
+        OldConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        ReluLayer(28 * 28 * intermediate_channels),
         DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
         DenseLayer(intermediate_layer_size, 10),
@@ -419,8 +408,8 @@ def setup_three_layer_with_conv():
     return [
         ConvLayer((28,28), (5, 5), 1, intermediate_channels),
         ReluLayer(28 * 28 * intermediate_channels),
-        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        # ReluLayer(28 * 28 * intermediate_channels),
+        ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        ReluLayer(28 * 28 * intermediate_channels),
         DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
         DenseLayer(intermediate_layer_size, 10),
@@ -532,19 +521,19 @@ def test_gradient(network, images, labels):
     layer = network[0]
     loss = gradient_batch(network, images[1:5], labels[1:5])
     max_gradient_index = np.unravel_index(
-        np.argmax(layer.biases_gradient),
-        layer.biases_gradient.shape
+        np.argmax(layer.weight_gradient),
+        layer.weight_gradient.shape
     )
 
     print("Max Gradient Index", max_gradient_index)
-    print("New Gradient", layer.biases_gradient[max_gradient_index])
+    print("New Gradient", layer.weight_gradient[max_gradient_index])
 
-    layer.biases[max_gradient_index] += epsilon
+    layer.weights[max_gradient_index] += epsilon
     loss2 = gradient_batch(network, images[1:5], labels[1:5])
     print("Manual Gradient", (loss2 - loss) / epsilon)
 
     # move things back
-    layer.biases[max_gradient_index] -= epsilon
+    layer.weights[max_gradient_index] -= epsilon
 
 
 def main():
@@ -572,6 +561,9 @@ def main():
 
     print(gradient_batch(network, images[:1], labels[:1]))
     print(gradient_batch(old_network, images[:1], labels[:1]))
+    test_gradient(network, images, labels)
+    test_gradient(old_network, images, labels)
+
     assert np.array_equal(network[0].weights, old_network[0].weights)
     assert np.array_equal(network[0].biases, old_network[0].biases)
     exit()
