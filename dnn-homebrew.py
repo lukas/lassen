@@ -78,23 +78,25 @@ class ReluLayer(Layer):
         return (activations > 0.0) * gradient
 
 class ConvLayer(Layer):
-    def __init__(self, img_shape, kernel_shape):
+    def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
         """
         To convert 32 channels of size 100x400 into 64 channels with a 5x5 kernel:
 
-        ConvLayer((100,400), (5, 5, 32, 64))
+        ConvLayer((100,400), (5, 5), 32, 64)
         """
         # superclass constructor
         assert len(img_shape) == 2
-        assert len(kernel_shape) == 4
+        assert len(kernel_shape) == 2
         super().__init__(
-            np.prod(img_shape) * kernel_shape[2],
-            np.prod(img_shape) * kernel_shape[3]
+            np.prod(img_shape) * input_channels,
+            np.prod(img_shape) * output_channels
         )
+        self.img_shape = img_shape
 
         # find some weights
-        self.weights = np.zeros(kernel_shape)
-        self.biases = np.zeros(kernel_shape[-1])
+        weights_shape = (input_channels, output_channels) + kernel_shape
+        self.weights = np.zeros(weights_shape)
+        self.biases = np.zeros(output_channels)
 
         # print out the shapes
         print("input_dim", self.input_dim)
@@ -105,39 +107,58 @@ class ConvLayer(Layer):
         print("biases shape", self.biases.shape)
 
     def forward(self, input):
-        w, h, input_channels, output_channels = self.weights.shape
-        input = input.reshape((w,h,input_channels))
-        output = np.zeros((w,h,output_channels))
+        input_channels, output_channels = self.weights.shape[:2]
+        input = input.reshape((input_channels,) + self.img_shape)
+        output = np.zeros((output_channels,) + self.img_shape)
 
-        for input_channel_index in range(input_channels):
-            for output_channel_index in range(output_channels):
-                output[:,:,output_channel_index] = \
-                    scipy.signal.convolve2d(
-                        input[:,:,input_channel_index],
-                        self.weights[:,:,input_channel_index, output_channel_index]
-                    )
+        for input_idx, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
+            for output_idx, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
+                # debug - begin
+                print("computing channel %i->%i on %s->%s with %s" % (
+                    input_index,
+                    output_index,
+                    input_channel.shape,
+                    output_channel.shape,
+                    kernel.shape))
+                # debug - end
+
+                output_channel += convolve2d(input_channel, kernel)
+
 
         output = output.flatten()
         assert output.shape == self.output_dim
         return output
 
     def backward(self, activations, gradient):
-        pass
-        # TODO: IMPLEMENT
+        assert gradient.shape == self.output_dim
+        assert activations.shape == self.input_dim
 
-        # assert gradient.shape == self.output_dim
-        # assert activations.shape == self.input_dim
-        #
-        # # unpack the gradient and activations
-        # activations = activations.reshape((w, h, input_channels))
-        # flat_gradient = gradient
-        # gradient = gradient.reshape((w, h, output_channels))
-        #
-        # self.biases_gradient += gradient.sum(axis=(0,1))
-        # self.weight_gradient +=
-        #
-        # # propogate the gradient backwards
-        # return self.forward(gradient)
+        # unpack the gradient and activations
+        input_channels, output_channels = self.weights.shape[:2]
+        activations = activations.reshape((input_channels,) + self.img_shape)
+        gradient = gradient.reshape((output_channels,) + self.img_shape)
+
+        # biases gradient
+        self.biases_gradient += gradient.sum(axis=(1,2))
+
+        # weights gradient
+        for indx, kernel in enumerate(np.eye(np.prod(kernel_shape))):
+            kernel = kernel.reshape(kernel_shape)
+            kernel_index = (indx // kernel_shape[1], indx % kernel_shape[1])
+            for act_index, activation_channel in enumerate(activations):
+                for grad_index, gradient_channel in enumerate(gradient):
+                    weight_index = (act_index, grad_index) + kernel_index
+                    self.weight_gradient[*weight_index] +=
+                        np.dot(
+                            activation_channel.flat,
+                            convolve2d(gradient_channel))
+
+
+            print(indx, i, j, kernel[i,j])
+            print(kernel)
+
+        # propogate the gradient backwards
+        return self.forward(gradient.reshape((-1,)))
         #
         # # assert gradient.shape == self.output_dim
         # # assert activations.shape == self.input_dim
@@ -240,9 +261,9 @@ def sgd(network, images, labels, test_images, test_labels):
           sys.stdout.write("Loss: %.3f  \r" % (l) )
           sys.stdout.flush()
 
-        print("Train Accuracy %.2f%% " % (100*accuracy(network, images, labels)), end="")
-        print("Test Accuracy  %.2f%% " % (100*accuracy(network, test_images, test_labels)))
-        # test_gradient(network, images, labels)
+        print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
+            ( 100 * accuracy(network, images, labels),
+              100 * accuracy(network, test_images, test_labels) ))
 
 def set_random_weights(network):
     for layer in network:
@@ -264,6 +285,9 @@ def test_gradient(network, images, labels):
 
 
 def main():
+    ConvLayer((100,400), (5, 5), 32, 64)
+    return
+
     images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
     test_images, test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
     images = images / 255.0
