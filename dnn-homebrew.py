@@ -241,7 +241,7 @@ class OldConvLayer(Layer):
         """
         To convert 32 channels of size 100x400 into 64 channels with a 5x5 kernel:
 
-        # ConvLayer((100,40), (5, 5), 32, 64)
+        # OldConvLayer((100,40), (5, 5), 32, 64)
         """
         # superclass constructor
         assert len(img_shape) == 2
@@ -268,7 +268,7 @@ class OldConvLayer(Layer):
         # debug - end
 
     def __str__(self):
-        return "ConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
+        return "OldConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
             self.img_shape,
             self.weights.shape[-2:], # kernel_shape,
             self.weights.shape[0],   # input_channels,
@@ -430,15 +430,21 @@ def old_setup_three_layer_with_conv():
     assert_layer_dimensions_align(network)
     return network
 
-def setup_three_layer_with_conv():
+def setup_three_layer_with_conv(flag):
+    if flag == 'old':
+        MyConvLayer = OldConvLayer
+    elif flag == 'new':
+        MyConvLayer = ConvLayer
+    else:
+        assert False, "The 'flag' must be 'old' or 'new'."
     intermediate_layer_size = 50
     intermediate_channels = 1
     network = [
-        # ConvLayer((28,28), (5, 5), 1, intermediate_channels),
+        # MyConvLayer((28,28), (5, 5), 1, intermediate_channels),
         # ReluLayer(28 * 28 * intermediate_channels),
-        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        # MyConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
         # ReluLayer(28 * 28 * intermediate_channels),
-        ConvLayer((28,28), (1, 1), 1, 1),
+        MyConvLayer((28,28), (1, 1), 1, 1),
         ReluLayer(28 * 28 * intermediate_channels),
 
         DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
@@ -586,8 +592,8 @@ def main():
 
     # network = setup_layers_perceptron(images, labels)
     # network = setup_layers_two_layer_beast(images, labels)
-    network = setup_three_layer_with_conv()
-    old_network = old_setup_three_layer_with_conv()
+    network = setup_three_layer_with_conv('new')
+    old_network = setup_three_layer_with_conv('old')
 
     set_random_weights(old_network)
     copy_weights(old_network, network)
