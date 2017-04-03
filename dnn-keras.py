@@ -67,13 +67,17 @@ def build_small_conv_model():
     model.add(MaxPooling2D(2,2))
     model.add(Conv2D(64, (5, 5)))
     model.add(Flatten())
+    model.add(Dense(1024))
     model.add(Dense(num_classes, activation='softmax', name="final"))
 
     print(model.summary())
     print(test_images.shape)
 
-    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'], batch_size=100, epochs=2)
+    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'], batch_size=100, epochs=1)
+    model.save("small_conv.h5")
+
     model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels))
+    model.save("small_conv.h5")
 
 
 def test_model(model_file):

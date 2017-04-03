@@ -507,7 +507,7 @@ def sgd(network, images, labels, test_images, test_labels):
           for layer in network:
             layer.step(learn_rate * (1.0/batch_size))
 
-          sys.stdout.write("Loss: %.3f  \r" % (l) )
+          sys.stdout.write("Loss: %.3f  \r" % (l/batch_size) )
           sys.stdout.flush()
 
         print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
@@ -519,10 +519,10 @@ def set_random_weights(network):
     for layer in network:
         if hasattr(layer, 'weights'):
             layer.weights = np.abs(np.random.normal(
-                scale=0.1,
+                scale=0.01,
                 size=layer.weights.shape))
             layer.biases = np.abs(np.random.normal(
-                scale=0.1,
+                scale=0.01,
                 size=layer.biases.shape))
 
 def set_unit_weights(network):
@@ -578,16 +578,14 @@ def main():
     network = setup_three_layer_with_conv()
     set_random_weights(network)
 
+
     # print("Loss new network", gradient_batch(network, images[:1], labels[:1]))
     # print("Loss old network", gradient_batch(old_network, images[:1], labels[:1]))
-    test_gradient(network, images, labels)
+    #test_gradient(network, images, labels)
     #
     # print("New Network Conv Gradient", network[0].weights_gradient)
     # print("Old Network Conv Gradient", old_network[0].weights_gradient)
 
-
-
-    exit()
     #t1 = datetime.datetime.now()
     sgd(network, images, labels, test_images, test_labels)
     #t2 = datetime.datetime.now()
