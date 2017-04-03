@@ -541,7 +541,7 @@ def test_gradient(network, images, labels):
     layer = network[0]
     loss = gradient_batch(network, images[:1], labels[:1])
     max_gradient_index = np.unravel_index(
-        np.argmax(layer.weights_gradient),
+        np.argmax(np.abs(layer.weights_gradient)),
         layer.weights_gradient.shape
     )
 
