@@ -279,8 +279,8 @@ def setup_three_layer_with_conv():
     return [
         ConvLayer((28,28), (5, 5), 1, intermediate_channels),
         ReluLayer(28 * 28 * intermediate_channels),
-        ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        ReluLayer(28 * 28 * intermediate_channels),
+        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        # ReluLayer(28 * 28 * intermediate_channels),
         DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
         DenseLayer(intermediate_layer_size, 10),
@@ -414,8 +414,6 @@ def main():
     network = setup_three_layer_with_conv()
     assert_layer_dimensions_align(network)
     set_random_weights(network)
-    test_gradient(network, images, labels)
-    return
 
     # network[0].biases = bias0
     # network[0].weights = weights0
