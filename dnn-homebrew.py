@@ -59,6 +59,15 @@ class DenseLayer(Layer):
         self.weights -= self.weight_gradient * step_size
         self.biases -= self.biases_gradient * step_size
 
+class ReluLayer(Layer):
+    def __init__(self, input_shape):
+        super().__init__(input_shape, input_shape)
+
+    def forward(self, input):
+        return np.max(input, 0.0)
+
+    def backward(self, activations, gradient):
+        return (activations > 0.0) * gradient
 
 def log_softmax(w):
     assert len(w.shape) == 1
