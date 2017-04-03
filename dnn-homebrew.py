@@ -221,12 +221,16 @@ def main():
     network = setup_layers_two_layer_beast(images, labels)
 
     network[0].biases = bias0
-    network[0].weights= weights0
-    network[1].biases = bias1
-    network[1].weights= weights1
-    print(accuracy(network, images, labels))
+    network[0].weights = weights0
+    network[2].biases = bias1
+    network[2].weights = weights1
+
+
+    #print(accuracy(network,images,labels))
+    #print(forward(network,images[0]))
+
     #set_random_weights(network)
-    #sgd(network, images, labels, test_images, test_labels)
+    sgd(network, images, labels, test_images, test_labels)
 
 
 if __name__ == "__main__":
