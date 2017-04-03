@@ -64,7 +64,10 @@ class ReluLayer(Layer):
         super().__init__(input_shape, input_shape)
 
     def forward(self, input):
-        return np.max(input, 0.0)
+        # print("input", input)
+        # print("input shape", input.shape)
+        # print("with max", np.maximum(input, 0.0))
+        return np.maximum(input, 0.0)
 
     def backward(self, activations, gradient):
         return (activations > 0.0) * gradient
@@ -82,6 +85,15 @@ def setup_layers_perceptron(images, labels):
     layer1 = SoftmaxLayer(labels.shape[1])
     network = [layer0, layer1]
     return network
+
+def setup_layers_two_layer_beast(images, labels):
+    intermediate_layer_size = 50
+    return [
+        DenseLayer(images.shape[1], intermediate_layer_size),
+        ReluLayer(intermediate_layer_size),
+        DenseLayer(intermediate_layer_size, labels.shape[1]),
+        SoftmaxLayer(labels.shape[1]),
+    ]
 
 def forward(network, image):
     input = image
@@ -217,7 +229,10 @@ def old_sgd(images, labels, w, b, test_images, test_labels):
         print("Train Accuracy %.2f%% " % (100*accuracy(images, labels, w, b)), end="")
         print("Test Accuracy  %.2f%% " % (100*accuracy(test_images, test_labels, w, b)))
 
-
+def set_random_weights(network):
+    for layer in network:
+        if hasattr(layer, 'weights'):
+            layer.weights = np.random.normal(size=layer.weights.shape)
 
 def main():
     images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
@@ -236,22 +251,19 @@ def main():
 
     epsilon = 0.0001
 
-    network = setup_layers_perceptron(images, labels)
+    # network = setup_layers_perceptron(images, labels)
+    network = setup_layers_two_layer_beast(images, labels)
+    set_random_weights(network)
 
-    #(o_loss, grad_weights, grad_bias) = old_loss(images[1:5], labels[1:5], w, b)
-    #loss = gradient_batch(network, images[1:5], labels[1:5])
+    # test the loss numerically
+    epsilon = 0.005
+    loss = gradient_batch(network, images[1:5], labels[1:5])
+    dense_layer = network[0]
+    print("New Gradient", dense_layer.biases_gradient[5])
 
-    #dense_layer = network[0]
-    #print("New Gradient", dense_layer.biases_gradient[5])
-    #epsilon = 0.0005
-    #dense_layer.biases[5] += epsilon
-
-    #loss2 = gradient_batch(network, images[1:5], labels[1:5])
-    #print(grad_weights[190,5])
-    #print("Old Gradient", grad_bias[5])
-    #print("Manual Gradient", (loss2 - loss) / epsilon)
-
-
+    dense_layer.biases[5] += epsilon
+    loss2 = gradient_batch(network, images[1:5], labels[1:5])
+    print("Manual Gradient", (loss2 - loss) / epsilon)
 
     #network[0].weights = tensorflow_weights
     #network[0].biases = tensorflow_biases
