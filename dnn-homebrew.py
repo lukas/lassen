@@ -126,7 +126,7 @@ def accuracy(network, images, labels):
     answer = np.argmax(labels, axis=1)
     return np.sum(np.equal(guess, answer))/len(guess)
 
-def sgd(network, images, labels, w, b, test_images, test_labels):
+def sgd(network, images, labels, test_images, test_labels):
     num_epochs = 100
     num_batches = 100
     learn_rate = 0.01
@@ -162,7 +162,7 @@ def main():
 
     network = setup_layers_perceptron(images, labels)
 
-    sgd(network, images, labels, w, b, test_images, test_labels)
+    sgd(network, images, labels, test_images, test_labels)
 
 
 if __name__ == "__main__":
