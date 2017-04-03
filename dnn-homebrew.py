@@ -50,6 +50,8 @@ class SoftmaxLayer(Layer):
         input = self.log_softmax(input)
         return np.exp(input) - output
 
+
+
 class DenseLayer(Layer):
     def __init__(self, input_dim, output_dim):
         super().__init__(input_dim, output_dim)
@@ -98,6 +100,90 @@ class ReluLayer(Layer):
     def backward(self, activations, gradient):
         return (activations > 0.0) * gradient
 
+class MaxPoolLayer(Layer):
+    def __init__(self, input_shape, pool_shape, channels):
+        # superclass constructor
+        assert len(input_shape) == 2
+        assert len(pool_shape) == 2
+        assert input_shape[0] % pool_shape[0] == 0
+        assert input_shape[1] % pool_shape[1] == 0
+        self.input_shape = input_shape
+        self.output_shape = tuple(np.divide(input_shape, pool_shape).astype(np.int32))
+        self.pool_shape = pool_shape
+        self.channels = channels
+        input_dim = np.prod(self.input_shape) * channels
+        output_dim = np.prod(self.output_shape) * channels
+        super().__init__(input_dim, output_dim)
+
+    def __str__(self):
+        return "MaxPoolLayer(%s, %s, %i) [%s -> %s]" % (
+            self.input_shape,
+            self.pool_shape,
+            self.channels,
+            self.input_dim,
+            self.output_dim
+        )
+
+    def forward(self, input):
+        print('pool_shape', self.pool_shape, type(self.pool_shape[0]))
+        print('output_shape', self.output_shape, type(self.output_shape[0]))
+        print('channels', self.channels)
+        # np.set_printoptions(threshold=10000)
+
+        # # debug - begin - old max pool
+        # old_max_pool_ouput = input.reshape(
+        #     self.channels,
+        #     self.output_shape[0],
+        #     self.pool_shape[0],
+        #     self.output_shape[1],
+        #     self.pool_shape[1]
+        # ).max(axis=(2,4)).flatten()
+        # print('old_max_pool_ouput', old_max_pool_ouput[3000:3010], old_max_pool_ouput.shape)
+        # # debug - end
+
+        # print('input', input.reshape(self.channels,)[0,12:16,12:16])
+        input = input \
+            .reshape((
+                self.channels,
+                self.output_shape[0],
+                self.pool_shape[0],
+                self.output_shape[1],
+                self.pool_shape[1])) \
+            .transpose((0,1,3,2,4)) \
+            .reshape((
+                self.channels * self.output_shape[0] * self.output_shape[1],
+                self.pool_shape[0] * self.pool_shape[1]))
+        assert not hasattr(self, 'max_pool_indices')
+        self.max_pool_indices = input.argmax(axis=1)
+        new_max_pool_output = input[
+            range(self.channels * self.output_shape[0] * self.output_shape[1]),
+            self.max_pool_indices
+        ]
+
+        print('max_pool_indices', self.max_pool_indices[3000:3010])
+        print('new_max_pool_output', new_max_pool_output[3000:3010], new_max_pool_output.shape)
+
+        print("input", input)
+        print("input.shape", input.shape)
+        print('new_max_pool_output.shape', new_max_pool_output.shape)
+        return new_max_pool_output
+        # y = x.reshape((2, 2, 4, 2)).transpose().reshape(8,4)
+        #
+
+
+    def backward(self, activations, gradient):
+        print('backward')
+        print('activations', activations.shape)
+        print('gradient', gradient.shape)
+        print('self.max_pool_indices', self.max_pool_indices.shape)
+        exit()
+
+
+    def reset_gradient(self):
+        super().reset_gradient()
+        if hasattr(self, 'max_pool_indices'):
+            del self.max_pool_indices
+
 class ConvLayer(Layer):
     def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
         """
@@ -142,6 +228,9 @@ class ConvLayer(Layer):
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
 
+        print('ConvLayer - forward')
+        print('input', input)
+        print('self.input_dim', self.input_dim)
         assert input.shape == self.input_dim
 
         input = input.reshape((input_channels,) + self.img_shape)
@@ -218,20 +307,43 @@ def setup_layers_two_layer_beast(images, labels):
     ]
 
 def setup_three_layer_with_conv():
+    # channels0 = 2
+    # channels1 = 2
+    # neurons2 = 2
+    # network = [
+    #     ConvLayer((28,28), (5, 5), 1, channels0),
+    #     ReluLayer(28 * 28 * channels0),
+    #     MaxPoolLayer((28, 28), (14, 14), channels0),
+    #
+    #     # ConvLayer((14,14), (5, 5), channels0, channels1),
+    #     # ReluLayer(14 * 14 * channels1),
+    #     # MaxPoolLayer((14, 14), (2, 2), channels1),
+    #     #
+    #     # DenseLayer(7 * 7 * channels1, neurons2),
+    #     # ReluLayer(neurons2),
+    #     #
+    #     # DenseLayer(neurons2, 10),
+    #     # SoftmaxLayer(10),
+    # ]
+    # assert_layer_dimensions_align(network)
+    # return network
 
-    intermediate_layer_size = 50
-    intermediate_channels = 2
+    channels0 = 32
+    channels1 = 64
+    neurons2 = 1024
     network = [
-        ConvLayer((28,28), (5, 5), 1, intermediate_channels),
-        ReluLayer(28 * 28 * intermediate_channels),
-        ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
-        ReluLayer(28 * 28 * intermediate_channels),
-        #MyConvLayer((28,28), (3, 3), 1, 1),
-        #ReluLayer(28 * 28 * intermediate_channels),
+        ConvLayer((28,28), (5, 5), 1, channels0),
+        ReluLayer(28 * 28 * channels0),
+        MaxPoolLayer((28, 28), (2, 2), channels0),
 
-        DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
-        ReluLayer(intermediate_layer_size),
-        DenseLayer(intermediate_layer_size, 10),
+        ConvLayer((14,14), (5, 5), channels0, channels1),
+        ReluLayer(14 * 14 * channels1),
+        MaxPoolLayer((14, 14), (2, 2), channels1),
+
+        DenseLayer(7 * 7 * channels1, neurons2),
+        ReluLayer(neurons2),
+
+        DenseLayer(neurons2, 10),
         SoftmaxLayer(10),
     ]
     assert_layer_dimensions_align(network)
@@ -321,8 +433,12 @@ def sgd(network, images, labels, test_images, test_labels):
 def set_random_weights(network):
     for layer in network:
         if hasattr(layer, 'weights'):
-            layer.weights = np.random.normal(size=layer.weights.shape)
-            layer.biases = np.random.normal(size=layer.biases.shape)
+            layer.weights = np.abs(np.random.normal(
+                scale=0.1,
+                size=layer.weights.shape))
+            layer.biases = np.abs(np.random.normal(
+                scale=0.1,
+                size=layer.biases.shape))
 
 def set_unit_weights(network):
     for layer in network:
