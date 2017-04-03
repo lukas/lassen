@@ -3,13 +3,13 @@ import numpy as np
 import sys
 
 class Layer:
-    def __init__(self, input_shape, output_shape):
-        self.input_shape = input_shape
-        self.output_shape = output_shape
-        if type(self.input_shape) == int:
-            self.input_shape = (input_shape,)
-        if type(self.output_shape) == int:
-            self.output_shape = (output_shape,)
+    def __init__(self, input_dim, output_dim):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        if type(self.input_dim) == int:
+            self.input_dim = (input_dim,)
+        if type(self.output_dim) == int:
+            self.output_dim = (output_dim,)
 
     def reset_gradient(self):
         pass
@@ -18,8 +18,8 @@ class Layer:
         pass
 
 class SoftmaxLayer(Layer):
-    def __init__(self, input_shape):
-        super().__init__(input_shape, input_shape)
+    def __init__(self, input_dim):
+        super().__init__(input_dim, input_dim)
 
     def log_softmax(self, w):
         assert len(w.shape) == 1
@@ -36,17 +36,17 @@ class SoftmaxLayer(Layer):
         return np.exp(input) - output
 
 class DenseLayer(Layer):
-    def __init__(self, input_shape, output_shape):
-        super().__init__(input_shape, output_shape)
-        self.weights = np.zeros((input_shape, output_shape))
-        self.biases = np.zeros(output_shape)
+    def __init__(self, input_dim, output_dim):
+        super().__init__(input_dim, output_dim)
+        self.weights = np.zeros((input_dim, output_dim))
+        self.biases = np.zeros(output_dim)
 
     def forward(self, input):
         return np.dot(self.weights.T, input) + self.biases
 
     def backward(self, activations, gradient):
-        assert gradient.shape == self.output_shape
-        assert activations.shape == self.input_shape
+        assert gradient.shape == self.output_dim
+        assert activations.shape == self.input_dim
         self.biases_gradient += gradient
         self.weight_gradient += np.outer(activations, gradient)
         return np.dot(self.weights, gradient)
@@ -60,8 +60,8 @@ class DenseLayer(Layer):
         self.biases -= self.biases_gradient * step_size
 
 class ReluLayer(Layer):
-    def __init__(self, input_shape):
-        super().__init__(input_shape, input_shape)
+    def __init__(self, input_dim):
+        super().__init__(input_dim, input_dim)
 
     def forward(self, input):
         # print("input", input)
@@ -71,6 +71,30 @@ class ReluLayer(Layer):
 
     def backward(self, activations, gradient):
         return (activations > 0.0) * gradient
+
+# class ConvLayer(Layer):
+#     def __init__(self, input_dim, ):
+#         super().__init__(input_dim, output_dim)
+#         self.weights = np.zeros((input_dim, output_dim))
+#         self.biases = np.zeros(output_dim)
+#
+#     def forward(self, input):
+#         return np.dot(self.weights.T, input) + self.biases
+#
+#     def backward(self, activations, gradient):
+#         assert gradient.shape == self.output_dim
+#         assert activations.shape == self.input_dim
+#         self.biases_gradient += gradient
+#         self.weight_gradient += np.outer(activations, gradient)
+#         return np.dot(self.weights, gradient)
+#
+#     def reset_gradient(self):
+#         self.weight_gradient = np.zeros(self.weights.shape)
+#         self.biases_gradient = np.zeros(self.biases.shape)
+#
+#     def step(self, step_size):
+#         self.weights -= self.weight_gradient * step_size
+#         self.biases -= self.biases_gradient * step_size
 
 def log_softmax(w):
     assert len(w.shape) == 1
@@ -141,6 +165,7 @@ def sgd(network, images, labels, test_images, test_labels):
     batch_size = 1000
     learn_rate = 0.01
     num_labels = labels.shape[0]
+
     for _ in range(num_epochs):
         rand_indices = np.random.permutation(num_labels)
         num_batches = int(num_labels/batch_size)
@@ -160,6 +185,7 @@ def sgd(network, images, labels, test_images, test_labels):
 
         print("Train Accuracy %.2f%% " % (100*accuracy(network, images, labels)), end="")
         print("Test Accuracy  %.2f%% " % (100*accuracy(network, test_images, test_labels)))
+        # test_gradient(network, images, labels)
 
 def set_random_weights(network):
     for layer in network:
@@ -170,11 +196,14 @@ def test_gradient(network, images, labels):
     epsilon = 0.005
     loss = gradient_batch(network, images[1:5], labels[1:5])
     dense_layer = network[0]
-    print("New Gradient", dense_layer.biases_gradient[5])
+    print("New Gradient", dense_layer.weight_gradient[200,3])
 
-    dense_layer.biases[5] += epsilon
+    dense_layer.weights[200,3] += epsilon
     loss2 = gradient_batch(network, images[1:5], labels[1:5])
     print("Manual Gradient", (loss2 - loss) / epsilon)
+
+    # move things back
+    dense_layer.weights[200,3] -= epsilon
 
 
 def main():
