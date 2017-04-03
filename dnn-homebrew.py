@@ -141,22 +141,44 @@ class ConvLayer(Layer):
 
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
+
+        # # debug - begin
+        # print("CHECKING DIMS", self)
+        # print("weights.shape", self.weights.shape)
+        # print("input_channels", input_channels)
+        # print("output_channels", output_channels)
+        # print("img_shape", self.img_shape)
+        # print("input.shape", input.shape)
+        # print("input_dim", self.input_dim)
+        # # debug - end
+
+        assert input.shape == self.input_dim
+
         input = input.reshape((input_channels,) + self.img_shape)
         output = np.zeros((output_channels,) + self.img_shape)
 
-        for input_index, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
-            for output_index, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
-                # debug - begin
-                print("computing channel %i->%i on %s->%s through %s with %s" % (
-                    input_index,
-                    output_index,
-                    input_channel.shape,
-                    output_channel.shape,
-                    convolve2d(input_channel, kernel).shape,
-                    kernel.shape))
-                # debug - end
+        # for input_index, (input_channel, weights_for_input) in enumerate(zip(input, self.weights)):
+        #     for output_index, (output_channel, kernel) in enumerate(zip(output, weights_for_input)):
+        #         # # debug - begin
+        #         # print("computing channel %i->%i on %s->%s through %s with %s" % (
+        #         #     input_index,
+        #         #     output_index,
+        #         #     input_channel.shape,
+        #         #     output_channel.shape,
+        #         #     convolve2d(input_channel, kernel, mode='same').shape,
+        #         #     kernel.shape))
+        #         # # debug - end
+        #
+        #         output_channel += convolve2d(input_channel, kernel, mode='same')
 
-                output_channel += convolve2d(input_channel, kernel)
+        for input_index, input_channel in enumerate(input):
+            for output_index, output_channel in enumerate(output):
+                output_channel += \
+                    convolve2d(
+                        input_channel,
+                        self.weights[input_index, output_index],
+                        mode='same'
+                    )
 
 
         output = output.flatten()
@@ -169,26 +191,56 @@ class ConvLayer(Layer):
 
         # unpack the gradient and activations
         input_channels, output_channels = self.weights.shape[:2]
+        kernel_shape = self.weights.shape[-2:]
         activations = activations.reshape((input_channels,) + self.img_shape)
         gradient = gradient.reshape((output_channels,) + self.img_shape)
+
+        # # debug - begin
+        # print("backward input_channels", input_channels)
+        # print("backward output_channels", output_channels)
+        # print("backward kernel_shape", kernel_shape)
+        # # debug - end
 
         # biases gradient
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
-        for indx, kernel in enumerate(np.eye(np.prod(kernel_shape))):
-            kernel = kernel.reshape(kernel_shape)
-            kernel_index = (indx // kernel_shape[1], indx % kernel_shape[1])
-            for act_index, activation_channel in enumerate(activations):
-                for grad_index, gradient_channel in enumerate(gradient):
+        previous_gradient = np.zeros(activations.shape)
+        for act_index, activation_channel in enumerate(activations):
+            for grad_index, gradient_channel in enumerate(gradient):
+                for indx, kernel in enumerate(np.eye(np.prod(kernel_shape))):
+                    kernel = kernel.reshape(kernel_shape)
+                    kernel_index = (indx // kernel_shape[1], indx % kernel_shape[1])
                     weight_index = (act_index, grad_index) + kernel_index
                     self.weight_gradient[weight_index] += np.dot(
-                        activation_channel.flat,
-                        convolve2d(gradient_channel, kernel).flat
+                        gradient_channel.flat,
+                        convolve2d(activation_channel, kernel, mode='same').flat
                     )
 
+                    previous_gradient[act_index] += \
+                        convolve2d(
+                            gradient_channel,
+                            kernel * self.weights[
+                                act_index,
+                                grad_index,
+                                kernel_shape[0] - kernel_index[0] - 1,
+                                kernel_shape[1] - kernel_index[1] - 1
+                            ],
+                            mode='same'
+                        )
+
+                # # print('previous_gradient.shape', previous_gradient.shape)
+                # # print('act_index', act_index)
+                # # print('grad_index', grad_index)
+                # previous_gradient[act_index,:] += \
+                #     convolve2d(
+                #         gradient_channel,
+                #         self.weights[act_index, grad_index],
+                #         mode='same'
+                #     )
+
         # propogate the gradient backwards
-        return self.forward(gradient.reshape((-1,)))
+        return previous_gradient.reshape((-1,))
 
 def log_softmax(w):
     assert len(w.shape) == 1
@@ -213,10 +265,13 @@ def setup_layers_two_layer_beast(images, labels):
 
 def setup_three_layer_with_conv():
     intermediate_layer_size = 50
+    intermediate_channels = 2
     return [
-        ConvLayer((28,28), (5, 5), 1, 1),
-        ReluLayer(28 * 28),
-        DenseLayer(28 * 28, intermediate_layer_size),
+        ConvLayer((28,28), (5, 5), 1, intermediate_channels),
+        ReluLayer(28 * 28 * intermediate_channels),
+        # ConvLayer((28,28), (5, 5), intermediate_channels, intermediate_channels),
+        # ReluLayer(28 * 28 * intermediate_channels),
+        DenseLayer(28 * 28 * intermediate_channels, intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
         DenseLayer(intermediate_layer_size, 10),
         SoftmaxLayer(10),
@@ -310,16 +365,22 @@ def set_random_weights(network):
 
 def test_gradient(network, images, labels):
     epsilon = 0.005
+    layer = network[0]
     loss = gradient_batch(network, images[1:5], labels[1:5])
-    dense_layer = network[2]
-    print("New Gradient", dense_layer.weight_gradient[200,3])
+    max_gradient_index = np.unravel_index(
+        np.argmax(layer.weight_gradient),
+        layer.weight_gradient.shape
+    )
 
-    dense_layer.weights[200,3] += epsilon
+    print("Max Gradient Index", max_gradient_index)
+    print("New Gradient", layer.weight_gradient[max_gradient_index])
+
+    layer.weights[max_gradient_index] += epsilon
     loss2 = gradient_batch(network, images[1:5], labels[1:5])
     print("Manual Gradient", (loss2 - loss) / epsilon)
 
     # move things back
-    dense_layer.weights[200,3] -= epsilon
+    layer.weights[max_gradient_index] -= epsilon
 
 
 def main():
@@ -343,6 +404,7 @@ def main():
     assert_layer_dimensions_align(network)
     set_random_weights(network)
     test_gradient(network, images, labels)
+    return
 
     # network[0].biases = bias0
     # network[0].weights = weights0
