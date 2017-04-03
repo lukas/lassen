@@ -184,24 +184,14 @@ class ConvLayer(Layer):
                 row_offset = (kernel_shape[0]//2)
                 col_offset = (kernel_shape[1]//2)
                 for i in range(-row_offset,row_offset+1):
-                    activation_min_row = max(-i, 0)
-                    activation_max_row = min(rows-i, rows)
-                    gradient_min_row = max(i, 0)
-                    gradient_max_row = min((rows + i), rows)
-
                     for j in range(-col_offset,col_offset+1):
-                        activation_min_col = max(-j, 0)
-                        activation_max_col = min(cols-j, cols)
-                        gradient_min_col = max(j, 0)
-                        gradient_max_col = min((cols + j), cols)
-
                         self.weights_gradient[act_index, grad_index, i+row_offset, j+col_offset] += np.dot(
                             activation_channel[
-                                activation_min_row:activation_max_row,
-                                activation_min_col:activation_max_col].flat,
+                                max(-i, 0):min(rows-i, rows),
+                                max(-j, 0):min(cols-j, cols)].flat,
                             gradient_channel[
-                                gradient_min_row:gradient_max_row,
-                                gradient_min_col:gradient_max_col].flat)
+                                max(i, 0):min((rows + i), rows),
+                                max(j, 0):min((cols + j), cols)].flat)
 
                 previous_gradient[act_index] += convolve2d(
                     gradient_channel,
