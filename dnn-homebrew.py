@@ -372,6 +372,7 @@ def set_random_weights(network):
     for layer in network:
         if hasattr(layer, 'weights'):
             layer.weights = np.random.normal(size=layer.weights.shape)
+            layer.baises = np.random.normal(size=layer.baises.shape)
 
 def test_gradient(network, images, labels):
     epsilon = 0.005
