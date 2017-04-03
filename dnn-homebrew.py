@@ -1,5 +1,6 @@
 import data, weights
 import numpy as np
+from scipy.signal import convolve2d
 import sys
 
 class Layer:
@@ -11,16 +12,18 @@ class Layer:
         if type(self.output_dim) == int:
             self.output_dim = (output_dim,)
 
+    def has_weights(self):
+        return hasattr(self, 'weights') and hasattr(self, 'biases')
+
     def reset_gradient(self):
         if self.has_weights():
             self.weight_gradient = np.zeros(self.weights.shape)
             self.biases_gradient = np.zeros(self.biases.shape)
 
-    def has_weights(self):
-        return hasattr(self, 'weights') and hasattr(self, 'biases')
-
     def step(self, step_size):
-        pass
+        if self.has_weights():
+            self.weights -= self.weight_gradient * step_size
+            self.biases -= self.biases_gradient * step_size
 
 class SoftmaxLayer(Layer):
     def __init__(self, input_dim):
@@ -59,10 +62,6 @@ class DenseLayer(Layer):
     def reset_gradient(self):
         self.weight_gradient = np.zeros(self.weights.shape)
         self.biases_gradient = np.zeros(self.biases.shape)
-
-    def step(self, step_size):
-        self.weights -= self.weight_gradient * step_size
-        self.biases -= self.biases_gradient * step_size
 
 class ReluLayer(Layer):
     def __init__(self, input_dim):
@@ -151,28 +150,11 @@ class ConvLayer(Layer):
                     self.weight_gradient[*weight_index] +=
                         np.dot(
                             activation_channel.flat,
-                            convolve2d(gradient_channel))
-
-
-            print(indx, i, j, kernel[i,j])
-            print(kernel)
+                            convolve2d(gradient_channel, kernel).flat
+                        )
 
         # propogate the gradient backwards
         return self.forward(gradient.reshape((-1,)))
-        #
-        # # assert gradient.shape == self.output_dim
-        # # assert activations.shape == self.input_dim
-        # # self.biases_gradient += gradient
-        # # self.weight_gradient += np.outer(activations, gradient)
-        # # return np.dot(self.weights, gradient)
-        #
-        # self.biases_gradient += gradient
-        # self.weight_gradient += np.outer(activations, gradient)
-
-
-    def step(self, step_size):
-        self.weights -= self.weight_gradient * step_size
-        self.biases -= self.biases_gradient * step_size
 
 def log_softmax(w):
     assert len(w.shape) == 1
