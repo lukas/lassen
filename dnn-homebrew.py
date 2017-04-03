@@ -125,9 +125,9 @@ class MaxPoolLayer(Layer):
         )
 
     def forward(self, input):
-        print('pool_shape', self.pool_shape, type(self.pool_shape[0]))
-        print('output_shape', self.output_shape, type(self.output_shape[0]))
-        print('channels', self.channels)
+        # print('pool_shape', self.pool_shape, type(self.pool_shape[0]))
+        # print('output_shape', self.output_shape, type(self.output_shape[0]))
+        # print('channels', self.channels)
         # np.set_printoptions(threshold=10000)
 
         # # debug - begin - old max pool
@@ -160,47 +160,70 @@ class MaxPoolLayer(Layer):
             self.max_pool_indices
         ]
 
-        print('max_pool_indices', self.max_pool_indices[3000:3010])
-        print('new_max_pool_output', new_max_pool_output[3000:3010], new_max_pool_output.shape)
-
-        print("input", input)
-        print("input.shape", input.shape)
-        print('new_max_pool_output.shape', new_max_pool_output.shape)
+        # print('max_pool_indices', self.max_pool_indices[3000:3010])
+        # print('new_max_pool_output', new_max_pool_output[3000:3010], new_max_pool_output.shape)
+        #
+        # print("input", input)
+        # print("input.shape", input.shape)
+        # print('new_max_pool_output.shape', new_max_pool_output.shape)
         return new_max_pool_output
         # y = x.reshape((2, 2, 4, 2)).transpose().reshape(8,4)
         #
 
 
     def backward(self, activations, gradient):
-        print('backward')
-        print('activations', activations.shape)
-        print('gradient', gradient.shape)
-        print('self.max_pool_indices', self.max_pool_indices.shape)
-        previous_gradient = np.zeros(activations.shape)
-        _ = gradient \
-            .reshape((
-                self.channels,
-                self.output_shape[0],
-                self.pool_shape[0],
-                self.output_shape[1],
-                self.pool_shape[1])) \
-            .transpose((0,1,3,2,4)) \
-            .reshape((
-                self.channels * self.output_shape[0] * self.output_shape[1],
-                self.pool_shape[0] * self.pool_shape[1]))
-        assert not hasattr(self, 'max_pool_indices')
-        self.max_pool_indices = input.argmax(axis=1)
-        new_max_pool_output = input[
+        # print('backward')
+        # print('activations', activations.shape)
+        # print('gradient', gradient.shape)
+        # print('self.max_pool_indices', self.max_pool_indices.shape)
+        # print("prev grad dim", (
+        #     self.channels * self.output_shape[0] * self.output_shape[1],
+        #     self.pool_shape[0] * self.pool_shape[1]) )
+
+        previous_gradient = np.zeros((
+            self.channels * self.output_shape[0] * self.output_shape[1],
+            self.pool_shape[0] * self.pool_shape[1]) )
+
+        previous_gradient[
             range(self.channels * self.output_shape[0] * self.output_shape[1]),
-            self.max_pool_indices
-        ]
-        exit()
+            self.max_pool_indices] = \
+                gradient
+
+        previous_gradient = previous_gradient.reshape(self.channels, self.output_shape[0],
+                        self.output_shape[1], self.pool_shape[0], self.pool_shape[1])
+        #print(previous_gradient.shape)
+        previous_gradient = previous_gradient.transpose((0,1,3,2,4)).flatten()
+
+
+        grad3d = gradient.reshape(
+            self.channels,
+            self.output_shape[0],
+            self.output_shape[1]
+        )
+
+        activ3d = activations.reshape(
+            self.channels,
+            self.input_shape[0],
+            self.input_shape[1]
+        )
+
+        prev3d = previous_gradient.reshape(
+            self.channels,
+            self.input_shape[0],
+            self.input_shape[1]
+        )
+        #
+        # print("Activation", activ3d[0:1,0:2,0:2])
+        # print("Gradient Next", grad3d[0,0,0])
+        # print("Gradient Prev", prev3d[0:1,0:2,0:2])
+
+        del self.max_pool_indices
+
+        return previous_gradient
 
 
     def reset_gradient(self):
         super().reset_gradient()
-        if hasattr(self, 'max_pool_indices'):
-            del self.max_pool_indices
 
 class ConvLayer(Layer):
     def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
@@ -246,9 +269,9 @@ class ConvLayer(Layer):
     def forward(self, input):
         input_channels, output_channels = self.weights.shape[:2]
 
-        print('ConvLayer - forward')
-        print('input', input)
-        print('self.input_dim', self.input_dim)
+        # print('ConvLayer - forward')
+        # print('input', input)
+        # print('self.input_dim', self.input_dim)
         assert input.shape == self.input_dim
 
         input = input.reshape((input_channels,) + self.img_shape)
@@ -520,7 +543,7 @@ def main():
 
 
 
-
+    exit()
     #t1 = datetime.datetime.now()
     sgd(network, images, labels, test_images, test_labels)
     #t2 = datetime.datetime.now()
