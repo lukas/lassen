@@ -54,8 +54,6 @@ class SoftmaxLayer(Layer):
         input = self.log_softmax(input)
         return np.exp(input) - output
 
-
-
 class DenseLayer(Layer):
     def __init__(self, input_dim, output_dim):
         super().__init__(input_dim, output_dim)
@@ -129,6 +127,9 @@ class MaxPoolLayer(Layer):
         )
 
     def forward(self, input):
+        mpi = input.reshape(self.channels, self.input_shape[0], self.input_shape[1])
+        print("Max Pool Input", mpi[0,:,:])
+
         input = input \
             .reshape((
                 self.channels,
@@ -146,7 +147,8 @@ class MaxPoolLayer(Layer):
             range(self.channels * self.output_shape[0] * self.output_shape[1]),
             self.max_pool_indices
         ]
-
+        mpo = new_max_pool_output.reshape(self.channels, self.output_shape[0], self.output_shape[1])
+        print("Max Pool Output", mpo[0,:,:])
         return new_max_pool_output
 
     def backward(self, activations, gradient):
@@ -197,9 +199,6 @@ class ConvLayer(Layer):
         self.weights = np.zeros(weights_shape)
         self.biases = np.zeros(output_channels)
 
-
-
-
     def __str__(self):
         return "ConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
             self.img_shape,
@@ -229,6 +228,14 @@ class ConvLayer(Layer):
 
         output += self.biases.reshape((-1, 1, 1))
 
+        # print("Biases", self.biases.shape)
+        # print("Biases", self.biases)
+        print("Input shape",input.shape)
+        print("Input", input[0,:,:])
+        print("Output shape", output.shape)
+        print("Output", output[0, :, :])
+        print("Weights Shape", self.weights.shape)
+        print("Weights", self.weights[0,0,:,:])
         output = output.flatten()
         assert output.shape == self.output_dim
         return output
@@ -276,9 +283,6 @@ class ConvLayer(Layer):
 
 def convolve(matrix, kernel, mode):
     return scipy.ndimage.convolve(matrix, kernel, mode='constant')
-
-
-
 
 
 def assert_layer_dimensions_align(network):
@@ -337,6 +341,9 @@ def forward(network, image):
 
     for layer in network:
         input = layer.forward(input)
+        print(layer)
+
+        print("Top Left output", input.flatten())
     return input
 
 def gradient(network, image, label):
@@ -355,7 +362,6 @@ def gradient(network, image, label):
     return loss, acc
 
 def gradient_batch(network, images, labels):
-    #print("Gradient", images.shape)
     for layer in network:
         layer.reset_gradient()
 
@@ -470,11 +476,20 @@ def test_gradient(network_name):
     assert (np.abs(manual_gradient - computed_gradient) < epsilon)
 
 @cli.command()
+def network_output():
+    pass
+
+@cli.command()
 def three_layer_accuracy():
     images, labels = data.load_train_mnist()
     test_images, test_labels = data.load_test_mnist()
     network = nets.load_network('three_layer_mnist', images, labels)
     weights.load_three_layer_weights_keras(network, 'small_conv_improved.h5')
+    print("Second convnet weights", network[3].weights.shape)
+    print("Second convnet weight", network[3].weights[0,0,:,:])
+
+
+    print(forward(network, images[0]))
     print(accuracy(network, images[:20], labels[:20]))
 
 @cli.command()

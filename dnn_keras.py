@@ -25,8 +25,8 @@ def display_images(images, labels, row_count, col_count):
         print(label)
 
 def build_two_layer_model():
-    images, one_hot_labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
-    test_images, one_hot_test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
+    images, one_hot_labels = data.load_train_mnist()
+    test_images, one_hot_test_labels = data.load_test_mnist()
     #display_images(images, labels, 28, 28)
     num_classes= 10
     num_images = images.shape[0]
@@ -50,8 +50,8 @@ def build_two_layer_model():
     model.save('two_layer.h5')
 
 def build_small_conv_model():
-    images, one_hot_labels = data.load_normalized_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
-    test_images, one_hot_test_labels = data.load_normalized_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
+    images, one_hot_labels = data.load_train_mnist()
+    test_images, one_hot_test_labels = data.load_test_mnist()
 
     num_classes= 10
     num_images = images.shape[0]
@@ -63,9 +63,9 @@ def build_small_conv_model():
     test_images = test_images.reshape((num_test_images,28,28,1))
 
     model=Sequential()
-    model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same"))
+    model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same", activation="relu"))
     model.add(MaxPooling2D(2,2))
-    model.add(Conv2D(64, (5, 5), padding="same"))
+    model.add(Conv2D(64, (5, 5), padding="same", activation="relu"))
     model.add(MaxPooling2D(2,2))
     model.add(Flatten())
     model.add(Dense(1024))
@@ -77,7 +77,7 @@ def build_small_conv_model():
     model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
     model.save("small_conv_improved.h5")
 
-    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), batch_size=100, epochs=10)
+    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), batch_size=1000, epochs=1)
     model.save("small_conv_improved.h5")
 
 

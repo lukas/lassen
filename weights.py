@@ -32,8 +32,13 @@ def set_layer_weights_keras(network, index, filename, layer_name):
     weights, biases = load_layer_weights_from_keras(filename, layer_name)
     if (layer_name.startswith('conv')):
         weights = weights.transpose(2,3,0,1)
+        # transpose to input channels, output channels, kernel width, kernel height
+        # print("Inserting with shape", weights.shape)
+        # print("(0,1) kernel", weights[0,1,0:5,0:5])
+        # print("(0,0) kernel", weights[0,0,0:5,0:5])
+
     network[index].weights = weights
-    network[index].bias = biases
+    network[index].biases = biases
 
     print("Set Weights", index, layer_name, weights.shape, biases.shape, network[index])
 
