@@ -1,6 +1,6 @@
 import numpy as np
 
-def load_mnist(data_filename, label_filename):
+def load_raw_mnist(data_filename, label_filename):
     images = []
     labels = []
     num_classes = 10
@@ -22,12 +22,20 @@ def load_mnist(data_filename, label_filename):
 
     return images, labels
 
-def load_normalized_mnist(data_filename, label_filename):
-    images, labels = load_mnist(data_filename, label_filename)
+def load_mnist(data_filename, label_filename):
+    """ Loads mnist and normalizes data """
+    images, labels = load_raw_mnist(data_filename, label_filename)
     images = images.astype(np.float32)
     images /= 255.0
     return images, labels
 
+def load_train_mnist():
+    images, labels = load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
+    return images, labels
+
+def load_test_mnist():
+    images, labels = load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
+    return images, labels
 
 def convert_to_one_hot(array, num_classes):
     num_labels = len(array)

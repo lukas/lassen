@@ -63,9 +63,10 @@ def build_small_conv_model():
     test_images = test_images.reshape((num_test_images,28,28,1))
 
     model=Sequential()
-    model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1)))
+    model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same"))
     model.add(MaxPooling2D(2,2))
-    model.add(Conv2D(64, (5, 5)))
+    model.add(Conv2D(64, (5, 5), padding="same"))
+    model.add(MaxPooling2D(2,2))
     model.add(Flatten())
     model.add(Dense(1024))
     model.add(Dense(num_classes, activation='softmax', name="final"))
@@ -73,11 +74,11 @@ def build_small_conv_model():
     print(model.summary())
     print(test_images.shape)
 
-    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'], batch_size=100, epochs=1)
-    model.save("small_conv.h5")
+    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
+    model.save("small_conv_improved.h5")
 
-    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels))
-    model.save("small_conv.h5")
+    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), batch_size=100, epochs=10)
+    model.save("small_conv_improved.h5")
 
 
 def test_model(model_file):

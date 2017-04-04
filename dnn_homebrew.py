@@ -1,4 +1,4 @@
-import data, weights
+import data, weights, nets
 import numpy as np
 
 import scipy.ndimage
@@ -278,47 +278,8 @@ def convolve(matrix, kernel, mode):
     return scipy.ndimage.convolve(matrix, kernel, mode='constant')
 
 
-def setup_layers_perceptron(images, labels):
-    layer0 = DenseLayer(images.shape[1], labels.shape[1])
-    layer1 = SoftmaxLayer(labels.shape[1])
-    network = [layer0, layer1]
-    return network
 
-def setup_layers_two_layer_beast(images, labels):
-    intermediate_layer_size = 50
-    return [
-        DenseLayer(images.shape[1], intermediate_layer_size),
-        ReluLayer(intermediate_layer_size),
-        DenseLayer(intermediate_layer_size, labels.shape[1]),
-        SoftmaxLayer(labels.shape[1]),
-    ]
 
-def setup_three_layer_with_conv():
-    channels0 = 32
-    channels1 = 64
-    neurons2 = 1024
-    network = [
-        ConvLayer((28,28), (5, 5), 1, channels0),
-        ReluLayer(28 * 28 * channels0),
-        MaxPoolLayer((28, 28), (2, 2), channels0),
-
-        ConvLayer((14,14), (5, 5), channels0, channels1),
-        ReluLayer(14 * 14 * channels1),
-        MaxPoolLayer((14, 14), (2, 2), channels1),
-
-        DenseLayer(7 * 7 * channels1, neurons2),
-        ReluLayer(neurons2),
-
-        DenseLayer(neurons2, 10),
-        SoftmaxLayer(10),
-    ]
-
-    assert_layer_dimensions_align(network)
-    print()
-    print_num_params(network)
-    print()
-
-    return network
 
 def assert_layer_dimensions_align(network):
     output_dim = network[0].output_dim
@@ -385,23 +346,27 @@ def gradient(network, image, label):
         activations.append(layer.forward(activations[-1]))
 
     loss = -np.dot(label, activations[-1])
+    acc = np.argmax(activations[-1]) == np.argmax(label)
     gradient = label
 
     for layer, activation in zip(reversed(network), reversed(activations[:-1])):
         gradient = layer.backward(activation, gradient)
 
-    return loss
+    return loss, acc
 
 def gradient_batch(network, images, labels):
-    print("Gradient", images.shape)
+    #print("Gradient", images.shape)
     for layer in network:
         layer.reset_gradient()
 
     loss = 0
+    acc = 0
     for image, label in zip(images, labels):
-        loss += gradient(network, image, label)
+        im_loss, im_acc = gradient(network, image, label)
+        loss+=im_loss
+        acc+=im_acc
 
-    return loss
+    return (loss/labels.shape[0]), (acc/labels.shape[0])
 
 def classify(network, image):
     output = forward(network, image)
@@ -409,18 +374,16 @@ def classify(network, image):
     return cls
 
 def accuracy(network, images, labels):
-    print("Computing Accuracy ", images.shape, labels.shape )
     guess = np.zeros(images.shape[0])
     for idx, image in enumerate(images):
-        print(idx)
         guess[idx] = classify(network, image)
 
     answer = np.argmax(labels, axis=1)
     return np.sum(np.equal(guess, answer))/len(guess)
 
 def sgd(network, images, labels, test_images, test_labels):
-    num_epochs = 1
-    batch_size = 1
+    num_epochs = 10
+    batch_size = 10
     learn_rate = 0.001
     num_labels = labels.shape[0]
 
@@ -434,14 +397,15 @@ def sgd(network, images, labels, test_images, test_labels):
           batch_labels = labels[rand_idx,:]
           batch_images = images[rand_idx,:]
 
-          l = gradient_batch(network, batch_images, batch_labels)
+          l, acc = gradient_batch(network, batch_images, batch_labels)
+
           for layer in network:
             layer.step(learn_rate * (1.0/batch_size))
 
-          sys.stdout.write("Loss: %.3f  \r" % (l) )
+          sys.stdout.write("Loss: %.3f Acc: %.3f \r" % (l, acc) )
           sys.stdout.flush()
 
-        print("Complete")
+        #print("Complete")
 
         print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
             ( 100 * accuracy(network, images, labels),
@@ -471,50 +435,61 @@ def copy_weights(network1, network2 ):
             layer2.weights[:] = layer1.weights
             layer2.biases[:] = layer1.biases
 
-def test_gradient(network, images, labels):
+
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+@click.option('--network_name', default='perceptron')
+def test_gradient(network_name):
+    images, labels = data.load_test_mnist()
+    network=nets.load_network(network_name, images, labels)
+
     epsilon = 0.0005
     layer = network[0]
-    loss = gradient_batch(network, images[:1], labels[:1])
+    loss, acc = gradient_batch(network, images[:1], labels[:1])
     max_gradient_index = np.unravel_index(
         np.argmax(np.abs(layer.weights_gradient)),
         layer.weights_gradient.shape
     )
 
-    print("Max Gradient Index", max_gradient_index)
-    print("New Gradient", layer.weights_gradient[max_gradient_index])
+    print("Computing gradient along max gradient index", max_gradient_index)
+
+    computed_gradient = layer.weights_gradient[max_gradient_index]
+    print("Computed Gradient", computed_gradient)
 
     layer.weights[max_gradient_index] += epsilon
-    loss2 = gradient_batch(network, images[:1], labels[:1])
-    print("Manual Gradient", (loss2 - loss) / epsilon)
+    loss2, acc = gradient_batch(network, images[:1], labels[:1])
+    manual_gradient = (loss2 - loss) / epsilon
+    print("Manual Gradient", manual_gradient)
 
     # move things back
     layer.weights[max_gradient_index] -= epsilon
 
-@click.command()
-@click.option('--test/--no-test', default=False)
-def main(test):
-    # ConvLayer((100,400), (5, 5), 32, 64)
-    # return
+    assert (np.abs(manual_gradient - computed_gradient) < epsilon)
 
-    images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
-    test_images, test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
-    images = images / 255.0
-    test_images = test_images / 255.0
+@cli.command()
+def three_layer_accuracy():
+    images, labels = data.load_train_mnist()
+    test_images, test_labels = data.load_test_mnist()
+    network = nets.load_network('three_layer_mnist', images, labels)
+    weights.load_three_layer_weights_keras(network, 'small_conv_improved.h5')
+    print(accuracy(network, images[:20], labels[:20]))
 
-    # tensorflow_weights = weights.load_weights_from_tensorflow("./tensorflow-checkpoint")
-    # tensorflow_biases = weights.load_biases_from_tensorflow("./tensorflow-checkpoint")
-    # bias0, weights0, bias1, weights1 = weights.load_weights_from_keras('perceptron.h5')
+@cli.command()
+def run():
+    images, labels = data.load_train_mnist()
+    test_images, test_labels = data.load_test_mnist()
 
     network = setup_three_layer_with_conv()
     set_random_weights(network)
-    if (test):
-        for i in range(50):
-            test_gradient(network, images, labels)
-        exit()
 
-    sgd(network, images[:5], labels[:5], test_images[:1], test_labels[:1])
-    #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
+    weights.load_three_layer_weights_keras(network, 'small_conv.h5')
+
+    sgd(network, images, labels, test_images[:100], test_labels[:100])
+
 
 
 if __name__ == "__main__":
-    main()
+    cli()
