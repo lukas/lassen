@@ -2,6 +2,8 @@ import data, weights
 import numpy as np
 from scipy.signal import convolve2d
 import sys
+import cProfile
+import re
 
 class Layer:
     def __init__(self, input_dim, output_dim):
@@ -136,7 +138,7 @@ class MaxPoolLayer(Layer):
             .reshape((
                 self.channels * self.output_shape[0] * self.output_shape[1],
                 self.pool_shape[0] * self.pool_shape[1]))
-        assert not hasattr(self, 'max_pool_indices')
+        #assert not hasattr(self, 'max_pool_indices')
         self.max_pool_indices = input.argmax(axis=1)
         new_max_pool_output = input[
             range(self.channels * self.output_shape[0] * self.output_shape[1]),
@@ -169,6 +171,8 @@ class MaxPoolLayer(Layer):
 
     def reset_gradient(self):
         super().reset_gradient()
+
+
 
 class ConvLayer(Layer):
     def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
@@ -362,6 +366,7 @@ def print_num_params(network):
 
 def forward(network, image):
     input = image
+
     for layer in network:
         input = layer.forward(input)
     return input
@@ -404,7 +409,7 @@ def accuracy(network, images, labels):
     return np.sum(np.equal(guess, answer))/len(guess)
 
 def sgd(network, images, labels, test_images, test_labels):
-    num_epochs = 3
+    num_epochs = 1
     batch_size = 100
     learn_rate = 0.001
     num_labels = labels.shape[0]
@@ -425,6 +430,8 @@ def sgd(network, images, labels, test_images, test_labels):
 
           sys.stdout.write("Loss: %.3f  \r" % (l) )
           sys.stdout.flush()
+
+        print("Complete")
 
         print("Train Accuracy: %5.2f%%  -  Test Accuracy: %5.2f%%" %
             ( 100 * accuracy(network, images, labels),
@@ -491,9 +498,9 @@ def main():
     set_random_weights(network)
 
     test_gradient(network, images, labels)
-    exit()
 
-    sgd(network, images, labels, test_images, test_labels)
+
+    sgd(network, images[:300], labels[:300], test_images[:10], test_labels[:10])
     #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
 
 
