@@ -241,6 +241,8 @@ class ConvLayer(Layer):
         rows, cols = self.img_shape
         input_channels, output_channels = self.weights.shape[:2]
         kernel_shape = self.weights.shape[-2:]
+        row_offset = kernel_shape[0] // 2
+        col_offset = kernel_shape[1] // 2
         activations = activations.reshape((input_channels,) + self.img_shape)
         gradient = gradient.reshape((output_channels,) + self.img_shape)
 
@@ -248,32 +250,28 @@ class ConvLayer(Layer):
         self.biases_gradient += gradient.sum(axis=(1,2))
 
         # weights gradient
+        for i in range(-row_offset,row_offset+1):
+            for j in range(-col_offset,col_offset+1):
+                activations_subarray = activations[:,
+                    max(-i, 0):min(rows-i, rows),
+                    max(-j, 0):min(cols-j, cols)
+                ].reshape((input_channels, -1))
+                gradient_subarray = gradient[:,
+                    max(i, 0):min((rows + i), rows),
+                    max(j, 0):min((cols + j), cols)
+                ].reshape((output_channels, -1)).T
+                self.weights_gradient[:,:,i+row_offset,j+row_offset] += \
+                    np.dot(activations_subarray, gradient_subarray)
+
+        # previous gradient
         previous_gradient = np.zeros(activations.shape)
-
-        def flat_dot(x, y):
-            return (x * y).sum()
-
         for act_index, activation_channel in enumerate(activations):
             for grad_index, gradient_channel in enumerate(gradient):
-                row_offset = (kernel_shape[0]//2)
-                col_offset = (kernel_shape[1]//2)
-                for i in range(-row_offset,row_offset+1):
-                    for j in range(-col_offset,col_offset+1):
-                        w_index = act_index,grad_index,i+row_offset,j+col_offset
-                        self.weights_gradient[w_index] += flat_dot(
-                            activation_channel[
-                                max(-i, 0):min(rows-i, rows),
-                                max(-j, 0):min(cols-j, cols)],
-                            gradient_channel[
-                                max(i, 0):min((rows + i), rows),
-                                max(j, 0):min((cols + j), cols)])
-
                 previous_gradient[act_index] += convolve(
                     gradient_channel,
                     self.weights[act_index, grad_index, ::-1, ::-1],
                     mode='same'
                 )
-
         return previous_gradient.reshape((-1,))
 
 def convolve(matrix, kernel, mode):
@@ -510,7 +508,8 @@ def main(test):
     network = setup_three_layer_with_conv()
     set_random_weights(network)
     if (test):
-        test_gradient(network, images, labels)
+        for i in range(50):
+            test_gradient(network, images, labels)
         exit()
 
     sgd(network, images[:5], labels[:5], test_images[:1], test_labels[:1])
