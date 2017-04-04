@@ -422,7 +422,7 @@ def accuracy(network, images, labels):
 
 def sgd(network, images, labels, test_images, test_labels):
     num_epochs = 1
-    batch_size = 10
+    batch_size = 1
     learn_rate = 0.001
     num_labels = labels.shape[0]
 
@@ -493,8 +493,8 @@ def test_gradient(network, images, labels):
     layer.weights[max_gradient_index] -= epsilon
 
 @click.command()
-@click.option('--test-gradient/--no-test-gradient', default=False)
-def main(test_gradient):
+@click.option('--test/--no-test', default=False)
+def main(test):
     # ConvLayer((100,400), (5, 5), 32, 64)
     # return
 
@@ -509,10 +509,11 @@ def main(test_gradient):
 
     network = setup_three_layer_with_conv()
     set_random_weights(network)
-    if (test_gradient):
+    if (test):
         test_gradient(network, images, labels)
+        exit()
 
-    sgd(network, images[:50], labels[:50], test_images[:10], test_labels[:10])
+    sgd(network, images[:5], labels[:5], test_images[:1], test_labels[:1])
     #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
 
 
