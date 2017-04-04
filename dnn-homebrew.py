@@ -1,9 +1,11 @@
 import data, weights
 import numpy as np
-from scipy.signal import convolve2d
+
+import scipy.ndimage
 import sys
 import cProfile
 import re
+import click
 
 class Layer:
     def __init__(self, input_dim, output_dim):
@@ -195,6 +197,9 @@ class ConvLayer(Layer):
         self.weights = np.zeros(weights_shape)
         self.biases = np.zeros(output_channels)
 
+
+
+
     def __str__(self):
         return "ConvLayer(%s, %s, %s, %s) [%s -> %s]" % (
             self.img_shape,
@@ -215,7 +220,8 @@ class ConvLayer(Layer):
         for input_index, input_channel in enumerate(input):
             for output_index, output_channel in enumerate(output):
                 output_channel += \
-                    convolve2d(
+                    convolve(
+
                         input_channel,
                         self.weights[input_index, output_index],
                         mode='same'
@@ -262,13 +268,16 @@ class ConvLayer(Layer):
                                 max(i, 0):min((rows + i), rows),
                                 max(j, 0):min((cols + j), cols)])
 
-                previous_gradient[act_index] += convolve2d(
+                previous_gradient[act_index] += convolve(
                     gradient_channel,
                     self.weights[act_index, grad_index, ::-1, ::-1],
                     mode='same'
                 )
 
         return previous_gradient.reshape((-1,))
+
+def convolve(matrix, kernel, mode):
+    return scipy.ndimage.convolve(matrix, kernel, mode='constant')
 
 
 def setup_layers_perceptron(images, labels):
@@ -386,6 +395,7 @@ def gradient(network, image, label):
     return loss
 
 def gradient_batch(network, images, labels):
+    print("Gradient", images.shape)
     for layer in network:
         layer.reset_gradient()
 
@@ -401,8 +411,10 @@ def classify(network, image):
     return cls
 
 def accuracy(network, images, labels):
+    print("Computing Accuracy ", images.shape, labels.shape )
     guess = np.zeros(images.shape[0])
     for idx, image in enumerate(images):
+        print(idx)
         guess[idx] = classify(network, image)
 
     answer = np.argmax(labels, axis=1)
@@ -410,7 +422,7 @@ def accuracy(network, images, labels):
 
 def sgd(network, images, labels, test_images, test_labels):
     num_epochs = 1
-    batch_size = 100
+    batch_size = 10
     learn_rate = 0.001
     num_labels = labels.shape[0]
 
@@ -419,7 +431,7 @@ def sgd(network, images, labels, test_images, test_labels):
         num_batches = int(num_labels/batch_size)
         #print("Num Batches", num_batches)
         for ridx in range(num_batches):
-          rand_idx = rand_indices[(ridx*batch_size):(ridx*(batch_size+1))]
+          rand_idx = rand_indices[(ridx*batch_size):((ridx+1)*batch_size)]
 
           batch_labels = labels[rand_idx,:]
           batch_images = images[rand_idx,:]
@@ -480,8 +492,9 @@ def test_gradient(network, images, labels):
     # move things back
     layer.weights[max_gradient_index] -= epsilon
 
-
-def main():
+@click.command()
+@click.option('--test-gradient/--no-test-gradient', default=False)
+def main(test_gradient):
     # ConvLayer((100,400), (5, 5), 32, 64)
     # return
 
@@ -496,12 +509,10 @@ def main():
 
     network = setup_three_layer_with_conv()
     set_random_weights(network)
+    if (test_gradient):
+        test_gradient(network, images, labels)
 
-
-    # test_gradient(network, images, labels)
-
-
-    sgd(network, images[:300], labels[:300], test_images[:10], test_labels[:10])
+    sgd(network, images[:50], labels[:50], test_images[:10], test_labels[:10])
     #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
 
 
