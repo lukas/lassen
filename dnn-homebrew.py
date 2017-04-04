@@ -490,8 +490,8 @@ def main():
     network = setup_three_layer_with_conv()
     set_random_weights(network)
 
-    test_gradient(network, images, labels)
-    exit()
+    # test_gradient(network, images, labels)
+    # exit()
 
     sgd(network, images, labels, test_images, test_labels)
     #sgd(network, images[:1000], labels[:1000], test_images, test_labels)
