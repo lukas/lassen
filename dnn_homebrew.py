@@ -229,12 +229,12 @@ class ConvLayer(Layer):
 
         # print("Biases", self.biases.shape)
         # print("Biases", self.biases)
-        print("Input shape",input.shape)
-        print("Input", input[0,:,:])
-        print("Output shape", output.shape)
-        print("Output", output[0, :, :])
-        print("Weights Shape", self.weights.shape)
-        print("Weights", self.weights[0,0,:,:])
+        # print("Input shape",input.shape)
+        # print("Input", input[0,:,:])
+        # print("Output shape", output.shape)
+        # print("Output", output[0, :, :])
+        # print("Weights Shape", self.weights.shape)
+        # print("Weights", self.weights[0,0,:,:])
         output = output.flatten()
         assert output.shape == self.output_dim
         return output
@@ -282,7 +282,7 @@ class ConvLayer(Layer):
 
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array
-    return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant', )
+    return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant' )
 
 
 def assert_layer_dimensions_align(network):
