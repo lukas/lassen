@@ -128,7 +128,6 @@ class MaxPoolLayer(Layer):
 
     def forward(self, input):
         mpi = input.reshape(self.channels, self.input_shape[0], self.input_shape[1])
-        print("Max Pool Input", mpi[0,:,:])
 
         input = input \
             .reshape((
@@ -148,7 +147,6 @@ class MaxPoolLayer(Layer):
             self.max_pool_indices
         ]
         mpo = new_max_pool_output.reshape(self.channels, self.output_shape[0], self.output_shape[1])
-        print("Max Pool Output", mpo[0,:,:])
         return new_max_pool_output
 
     def backward(self, activations, gradient):
@@ -342,8 +340,8 @@ def forward(network, image):
     for layer in network:
         input = layer.forward(input)
         print(layer)
+        print("Sum", sum(input.flatten()))
 
-        print("Top Left output", input.flatten())
     return input
 
 def gradient(network, image, label):
@@ -490,7 +488,7 @@ def three_layer_accuracy():
 
 
     print(forward(network, images[0]))
-    print(accuracy(network, images[:20], labels[:20]))
+    #print(accuracy(network, images[:20], labels[:20]))
 
 @cli.command()
 def run():
