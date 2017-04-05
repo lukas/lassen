@@ -80,6 +80,12 @@ def build_small_conv_model():
     model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), batch_size=1000, epochs=1)
     model.save("small_conv_improved.h5")
 
+def build_identity_conv_model():
+    msimple = Sequential()
+    msimple.add(Conv2D(1, (1, 1), input_shape=(28,28,1), padding="same"))
+    w = msimple.layers[0].get_weights()
+    w[0][0,0,0,0]=1.0
+    msimple.layers[0].set_weights(w)
 
 def test_model(model_file):
     images, one_hot_labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")

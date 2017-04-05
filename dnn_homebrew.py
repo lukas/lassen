@@ -220,7 +220,6 @@ class ConvLayer(Layer):
             for output_index, output_channel in enumerate(output):
                 output_channel += \
                     convolve(
-
                         input_channel,
                         self.weights[input_index, output_index],
                         mode='same'
@@ -282,7 +281,8 @@ class ConvLayer(Layer):
         return previous_gradient.reshape((-1,))
 
 def convolve(matrix, kernel, mode):
-    return scipy.ndimage.convolve(matrix, kernel, mode='constant')
+    # For some crazy reason, have to invert the kernel array
+    return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant', )
 
 
 def assert_layer_dimensions_align(network):
