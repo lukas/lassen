@@ -9,10 +9,10 @@ class wrapped_lib(object):
 	arrays can be passed.
 
 	The mapping is:
-	
+
 	array -> array.data, array.shape[0], array.shape[1], ...
 	"""
-	
+
 	def __init__(self, library_name):
 		"""Example: lib = wrapped_lib('lib.so')"""
 		self.__lib = ctypes.cdll.LoadLibrary(library_name)
@@ -21,7 +21,7 @@ class wrapped_lib(object):
 		"""Wrap the c function and return it to the user."""
 		func = getattr(self.__lib, name)
 		return lambda *args: func(*wrapped_lib.__convert_args(args))
-		
+
 	@classmethod
 	def __convert_args(cls, arg):
 		"""Converts a list of arguments such that ndarrays are expanded."""
@@ -40,17 +40,14 @@ def main():
 	print lib.test(89)
 	print lib.test(1234)
 
-	import util
-	@util.timed_function
 	def add_arrays_1(a, b):
 		return a ** 2 + b ** 2
 
-	@util.timed_function
 	def add_arrays_2(a,b):
 		c = numpy.empty_like(a)
 		lib.add_arrays(a, b, c)
 		return c
-		
+
 	nn = 100000000
 	a = numpy.arange(nn, dtype=numpy.float64)
 	b = numpy.arange(nn, dtype=numpy.float64)
