@@ -129,7 +129,6 @@ class MaxPoolLayer(Layer):
 
     def forward(self, input):
         mpi = input.reshape(self.channels, self.input_shape[0], self.input_shape[1])
-        print("Max Pool Input", mpi[0,:,:])
 
         input = input \
             .reshape((
@@ -149,7 +148,6 @@ class MaxPoolLayer(Layer):
             self.max_pool_indices
         ]
         mpo = new_max_pool_output.reshape(self.channels, self.output_shape[0], self.output_shape[1])
-        print("Max Pool Output", mpo[0,:,:])
         return new_max_pool_output
 
     def backward(self, activations, gradient):
@@ -223,7 +221,6 @@ class ConvLayer(Layer):
             for output_index, output_channel in enumerate(output):
                 output_channel += \
                     convolve(
-
                         input_channel,
                         self.weights[input_index, output_index],
                         mode='same'
@@ -233,12 +230,12 @@ class ConvLayer(Layer):
 
         # print("Biases", self.biases.shape)
         # print("Biases", self.biases)
-        print("Input shape",input.shape)
-        print("Input", input[0,:,:])
-        print("Output shape", output.shape)
-        print("Output", output[0, :, :])
-        print("Weights Shape", self.weights.shape)
-        print("Weights", self.weights[0,0,:,:])
+        # print("Input shape",input.shape)
+        # print("Input", input[0,:,:])
+        # print("Output shape", output.shape)
+        # print("Output", output[0, :, :])
+        # print("Weights Shape", self.weights.shape)
+        # print("Weights", self.weights[0,0,:,:])
         output = output.flatten()
         assert output.shape == self.output_dim
         return output
@@ -285,7 +282,8 @@ class ConvLayer(Layer):
         return previous_gradient.reshape((-1,))
 
 def convolve(matrix, kernel, mode):
-    return scipy.ndimage.convolve(matrix, kernel, mode='constant')
+    # For some crazy reason, have to invert the kernel array
+    return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant' )
 
 
 def assert_layer_dimensions_align(network):
@@ -345,8 +343,8 @@ def forward(network, image):
     for layer in network:
         input = layer.forward(input)
         print(layer)
+        print("Sum", sum(input.flatten()))
 
-        print("Top Left output", input.flatten())
     return input
 
 def gradient(network, image, label):
@@ -535,7 +533,7 @@ def three_layer_accuracy():
 
 
     print(forward(network, images[0]))
-    print(accuracy(network, images[:20], labels[:20]))
+    #print(accuracy(network, images[:20], labels[:20]))
 
 @cli.command()
 def run():
