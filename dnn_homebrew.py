@@ -1,6 +1,7 @@
 import data, weights, nets
 import numpy as np
 
+import ast
 import scipy.ndimage
 import sys
 import cProfile
@@ -188,6 +189,8 @@ class ConvLayer(Layer):
         # superclass constructor
         assert len(img_shape) == 2
         assert len(kernel_shape) == 2
+        assert kernel_shape[0] % 2 == 1
+        assert kernel_shape[1] % 2 == 1
         super().__init__(
             np.prod(img_shape) * input_channels,
             np.prod(img_shape) * output_channels
@@ -474,6 +477,48 @@ def test_gradient(network_name):
     layer.weights[max_gradient_index] -= epsilon
 
     assert (np.abs(manual_gradient - computed_gradient) < epsilon)
+
+@cli.command()
+@click.option('--kernel_size', default='1')
+@click.option('--translate', default='(0,0)')
+def test_identity(kernel_size, translate):
+    # parse the arguments
+    kernel_size = int(kernel_size)
+    translate = ast.literal_eval(translate)
+    assert -(kernel_size // 2) <= translate[0] <= kernel_size // 2
+    assert -(kernel_size // 2) <= translate[1] <= kernel_size // 2
+
+
+    # create the network
+    conv_layer = ConvLayer((28,28), (kernel_size, kernel_size), 1, 1)
+    conv_layer.weights[
+        0, 0,
+        kernel_size // 2 - translate[0],
+        kernel_size // 2 - translate[1]
+    ] = 1.0
+
+    # load the images and run the newtwork
+    test_image = data.load_train_mnist()[0][0].astype(np.float64)
+    out_image = conv_layer.forward(test_image)
+
+    # compute the right answer (analytically)
+    right_answer = test_image.copy()
+    print("right answer", right_answer.shape, right_answer.sum())
+
+    # assert that it works properly
+    print("Testing %s -> %s..." % (test_image.shape, out_image.shape))
+    print("Kernel Size:       %s" % kernel_size)
+    print("Translate:         %s" % (translate,))
+    print("Sum Input:         %s" % np.sum(test_image))
+    print("Sum Right Answer:  %s" % np.sum(right_answer))
+    print("Sum Output:        %s" % np.sum(out_image))
+    print("All close:         %s" % np.allclose(test_image, out_image))
+    print("Array Equal:       %s" % np.array_equal(test_image, out_image))
+    print("Max Difference:    %s" % np.max(np.abs(test_image - out_image)))
+    print("Shape Input:       %s" % test_image.shape)
+    print("Shape Output:      %s" % out_image.shape)
+
+
 
 @cli.command()
 def network_output():
