@@ -3,7 +3,183 @@ import nets
 import dnn_homebrew
 import numpy as np
 
+def manual_weight_derivative(network, images, labels, layer_index, weight_index):
+    """Calculate the partial derivative of loss wrt single weight
+    by changing one of the weights by epsilon and noting change in loss"""
+
+    epsilon = 0.005
+    layer = network[layer_index]
+    loss, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    layer.weights[weight_index] += epsilon
+    loss2, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    manual_gradient = (loss2 - loss) / epsilon
+    # move things back
+    layer.weights[weight_index] -= epsilon
+
+    return manual_gradient
+
+def analytic_weight_derivative(network, images, labels, layer_index, weight_index):
+    """Calcuate the partial deviative of loss wrt single weight
+    by backpropogation.  Should be the same as manual_derivative
+    if we did our math properly"""
+
+    loss, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    layer = network[layer_index]
+    computed_gradient = layer.weights_gradient[weight_index]
+
+    return computed_gradient
+
+def compare_weight_derivative(network, images, labels, layer_index, weight_index):
+    m_deriv = manual_weight_derivative(network, images, labels, layer_index, weight_index)
+    a_deriv = analytic_weight_derivative(network, images, labels, layer_index, weight_index)
+    return abs(m_deriv - a_deriv)
+
+def compare_all_weight_derivatives(network, images, labels):
+    max_diff = -np.Inf
+    for layer_index in range(len(network)):
+        if network[layer_index].has_weights():
+            for weight_index, weight in np.ndenumerate(network[layer_index].weights):
+                diff = compare_weight_derivative(network, images, labels, layer_index, weight_index)
+                max_diff = max(diff, max_diff)
+                if diff > 0.001:
+                    print("Discrepency in Network Layer ", layer_index, " Weight Index ", weight_index)
+                    print("Manual", manual_weight_derivative(network, images, labels, layer_index, weight_index))
+                    print("Analytic", analytic_weight_derivative(network, images, labels, layer_index, weight_index))
+    return max_diff
+
+def analytic_node_derivative(network, image, label, layer_index, node_index):
+    activations = [image]
+    for layer in network:
+        activations.append(layer.forward(activations[-1]))
+
+    gradients_rev = [label]
+
+    for layer, activation in zip(reversed(network), reversed(activations[:-1])):
+        gradients_rev.append(layer.backward(activation, gradients_rev[-1]))
+
+    gradients=gradients_rev[::-1]
+    gradient_layer = gradients[layer_index]
+
+    return(gradients[layer_index][node_index])
+
+def compare_node_derivative(network, image, label, layer_index, node_index):
+    m_deriv = manual_node_derivative(network, image, label, layer_index, node_index)
+    a_deriv = analytic_node_derivative(network, image, label, layer_index, node_index)
+    return abs(m_deriv - a_deriv)
+
+def manual_node_derivative(network, image, label, layer_index, node_index):
+    """Calculate the partial derivative of loss wrt single node
+    by changing one of the nodes by epsilon and noting change in loss"""
+
+    epsilon = 0.00005
+
+    activations = [image]
+    for layer in network:
+        activations.append(layer.forward(activations[-1]))
+
+    loss = -np.dot(label, activations[-1])
+
+    new_activations = activations[0:(layer_index+1)]
+
+    activation_layer = activations[layer_index]
+    activation_layer[node_index] += epsilon
+
+    new_activations[layer_index] = activation_layer
+
+    for layer in network[layer_index:]:
+        new_activations.append(layer.forward(new_activations[-1]))
+
+    loss2 = -np.dot(label, new_activations[-1])
+
+    manual_gradient = (loss2 - loss) / epsilon
+
+    return manual_gradient
+
+def compare_all_node_derivatives(network, image, label):
+    max_diff = -np.Inf
+    for layer_index in range(len(network)):
+        if network[layer_index].has_weights():
+            for node_index in np.ndindex(network[layer_index].input_dim):
+                diff = compare_node_derivative(network, image, label, layer_index, node_index)
+                max_diff = max(diff, max_diff)
+                if diff > 0.001:
+                    print("Discrepency in Network Layer ", layer_index, " Weight Index ", node_index)
+                    print("Manual", manual_node_derivative(network, image, label, layer_index, node_index))
+                    print("Analytic", analytic_node_derivative(network, image, label, layer_index, node_index))
+    return max_diff
+
+
 class TestNetwork(unittest.TestCase):
+    def test_dense_deriv(self):
+        """Tests taking weights derivative of a dense layer + softmax layer
+        (4) input = [0,1,2,3]
+        (4x3) weights = [[0,1,2] ... [9,10,11]]
+        (3) biases = [0,1,2]
+        """
+
+        image=np.arange(4.)
+        weights = np.reshape(np.arange(12.),(4,3))
+        biases = np.arange(3)
+        network=[nets.DenseLayer(4, 3), nets.SoftmaxLayer(3)]
+        network[0].weights = weights
+        network[0].biases=biases
+        one_hot_labels = np.array([[0,1,0]])
+
+        self.assertLess(compare_all_weight_derivatives(network, [image],
+            one_hot_labels), 0.0001)
+        self.assertLess(compare_all_node_derivatives(network, image,
+            one_hot_labels[0]), 0.0001)
+
+
+    def test_conv_deriv(self):
+        """Tests the derivative of a conv layer+dense layer+softmax layer
+        (4x4) input = [[0,1,2,3], ... [12,13,14,15]]
+        biases = 1
+        (3x3) weights = [[0,1,2], ... [6,7,8]]
+        (4x4) image = [[0,1,2,3], ... [12,13,14,15]]
+        label = 1
+        """
+        image=np.reshape(np.arange(16.),(4,4)).flatten()
+        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 1),
+                  dnn_homebrew.DenseLayer(4*4,3),
+                  dnn_homebrew.SoftmaxLayer(3)]
+        biases = np.array([1.])
+        weights = np.reshape(np.arange(9.),(1,1,3,3))
+        one_hot_labels = np.array([0,1,0])
+        network[0].biases = biases
+        network[0].weights = weights
+        network[1].weights = np.reshape(np.arange(16.*3),(16, 3))
+        one_hot_labels = np.array([[0,1,0]])
+
+
+        self.assertLess(compare_all_weight_derivatives(network, [image],
+             one_hot_labels), 0.0001)
+        self.assertLess(compare_all_node_derivatives(network, image,
+                     one_hot_labels[0]), 0.0001)
+
+    def test_small_cnn_deriv(self):
+        """Tests the derivative of a conv layer+relu+maxpool+dense layer+softmax layer
+        """
+
+        image=np.reshape(np.arange(16.),(4,4)).flatten()
+        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
+                  dnn_homebrew.ReluLayer(4*4*2),
+                  dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
+                  dnn_homebrew.DenseLayer(2*2*2,3),
+                  dnn_homebrew.SoftmaxLayer(3)]
+        biases = np.array([1.,2.])
+        weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
+        one_hot_labels = np.array([0,1,0])
+        network[0].biases = biases
+        network[0].weights = weights
+        network[3].weights = np.reshape(np.arange(4.*2*3),(4*2, 3))
+        one_hot_labels = np.array([[0,1,0]])
+
+        self.assertLess(compare_all_weight_derivatives(network, [image],
+             one_hot_labels), 0.0001)
+        self.assertLess(compare_all_node_derivatives(network, image,
+                     one_hot_labels[0]), 0.0001)
+
 
     def test_single_conv_layer(self):
         """Tests a convolutional layer
@@ -12,29 +188,29 @@ class TestNetwork(unittest.TestCase):
         (3x3) weights = [[0,1,2], ... [6,7,8]]
         sum of output should be 3406"""
 
-        img=np.reshape(np.arange(0,16),(4,4))
+        image=np.reshape(np.arange(16),(4,4))
         network= [nets.ConvLayer((4,4), (3, 3), 1, 1)]
         biases = np.array([1.])
         weights = np.reshape(np.arange(9),(1,1,3,3))
         network[0].biases = biases
         network[0].weights = weights
 
-        output = dnn_homebrew.forward(network, img.flatten())
+        output = dnn_homebrew.forward(network, image.flatten())
         true_sum = 3406.0
         my_sum = np.sum(output)
         self.assertEqual(my_sum, true_sum)
 
     def test_single_max_pool_layer(self):
         """Tests a max pool layer
-        (4x4x2) input = [[[0,1,2,3], ... [12,13,14,15]], 
-                         [[16,17,18,19] ... [28, 29, 30, 31]]] 
+        (4x4x2) input = [[[0,1,2,3], ... [12,13,14,15]],
+                         [[16,17,18,19] ... [28, 29, 30, 31]]]
         (2x2) Max pool
         sum of output should be 164"""
 
-        img=np.reshape(np.arange(0,32),(4,4,2))
-        img=np.transpose(img, (2,0,1))
+        image=np.reshape(np.arange(0,32),(4,4,2))
+        image=np.transpose(image, (2,0,1))
         network=[nets.MaxPoolLayer((4,4), (2,2), 2)]
-        output = dnn_homebrew.forward(network, img.flatten())
+        output = dnn_homebrew.forward(network, image.flatten())
 
         my_sum = np.sum(output)
         true_sum=164.0
@@ -47,17 +223,18 @@ class TestNetwork(unittest.TestCase):
         (3) biases = [0,1,2]
         sum of output should be 147"""
 
-        # input size 4, output size 3
-        img=np.arange(4)
+        image=np.arange(4)
         weights = np.reshape(np.arange(12),(4,3))
         biases = np.arange(3)
         network=[nets.DenseLayer(4, 3)]
         network[0].weights = weights
         network[0].biases=biases
-        output = dnn_homebrew.forward(network, img.flatten())
+        output = dnn_homebrew.forward(network, image.flatten())
         my_sum = np.sum(output)
         true_sum=147.0
         self.assertEqual(my_sum, true_sum)
+
+
 
 
 

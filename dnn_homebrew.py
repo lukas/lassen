@@ -74,8 +74,10 @@ class DenseLayer(Layer):
     def backward(self, activations, gradient):
         assert gradient.shape == self.output_dim
         assert activations.shape == self.input_dim
+
         self.biases_gradient += gradient
         self.weights_gradient += np.outer(activations, gradient)
+
         return np.dot(self.weights, gradient)
 
     def reset_gradient(self):
@@ -224,16 +226,8 @@ class ConvLayer(Layer):
                     )
 
         output += self.biases.reshape((-1, 1, 1))
-
-        # print("Biases", self.biases.shape)
-        # print("Biases", self.biases)
-        # print("Input shape",input.shape)
-        # print("Input", input[0,:,:])
-        # print("Output shape", output.shape)
-        # print("Output", output[0, :, :])
-        # print("Weights Shape", self.weights.shape)
-        # print("Weights", self.weights[0,0,:,:])
         output = output.flatten()
+
         assert output.shape == self.output_dim
         return output
 
@@ -267,6 +261,8 @@ class ConvLayer(Layer):
                 self.weights_gradient[:,:,i+row_offset,j+row_offset] += \
                     np.dot(activations_subarray, gradient_subarray)
 
+        self.weights_gradient = self.weights_gradient[:,:,::-1,::-1]
+        
         # previous gradient
         previous_gradient = np.zeros(activations.shape)
         for act_index, activation_channel in enumerate(activations):
@@ -339,8 +335,6 @@ def forward(network, image):
 
     for layer in network:
         input = layer.forward(input)
-        print(layer)
-        print("Sum", sum(input.flatten()))
 
     return input
 
@@ -369,7 +363,6 @@ def gradient_batch(network, images, labels):
         im_loss, im_acc = gradient(network, image, label)
         loss+=im_loss
         acc+=im_acc
-
     return (loss/labels.shape[0]), (acc/labels.shape[0])
 
 def classify(network, image):
@@ -444,34 +437,6 @@ def copy_weights(network1, network2 ):
 def cli():
     pass
 
-@cli.command()
-@click.option('--network_name', default='perceptron')
-def test_gradient(network_name):
-    images, labels = data.load_test_mnist()
-    network=nets.load_network(network_name, images, labels)
-
-    epsilon = 0.0005
-    layer = network[0]
-    loss, acc = gradient_batch(network, images[:1], labels[:1])
-    max_gradient_index = np.unravel_index(
-        np.argmax(np.abs(layer.weights_gradient)),
-        layer.weights_gradient.shape
-    )
-
-    print("Computing gradient along max gradient index", max_gradient_index)
-
-    computed_gradient = layer.weights_gradient[max_gradient_index]
-    print("Computed Gradient", computed_gradient)
-
-    layer.weights[max_gradient_index] += epsilon
-    loss2, acc = gradient_batch(network, images[:1], labels[:1])
-    manual_gradient = (loss2 - loss) / epsilon
-    print("Manual Gradient", manual_gradient)
-
-    # move things back
-    layer.weights[max_gradient_index] -= epsilon
-
-    assert (np.abs(manual_gradient - computed_gradient) < epsilon)
 
 @cli.command()
 def network_output():
