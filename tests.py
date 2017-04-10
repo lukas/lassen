@@ -121,7 +121,7 @@ class TestNetwork(unittest.TestCase):
         weights = np.reshape(np.arange(12.),(4,3))
         biases = np.arange(3)
         network=[nets.DenseLayer(4, 3), nets.SoftmaxLayer(3)]
-        network[0].weights = weights
+        network[0].set_weights(weights)
         network[0].biases=biases
         one_hot_labels = np.array([[0,1,0]])
 
@@ -147,8 +147,8 @@ class TestNetwork(unittest.TestCase):
         weights = np.reshape(np.arange(9.),(1,1,3,3))
         one_hot_labels = np.array([0,1,0])
         network[0].biases = biases
-        network[0].weights = weights
-        network[1].weights = np.reshape(np.arange(16.*3),(16, 3))
+        network[0].set_weights(weights)
+        network[1].set_weights(np.reshape(np.arange(16.*3),(16, 3)))
         one_hot_labels = np.array([[0,1,0]])
 
 
@@ -171,14 +171,76 @@ class TestNetwork(unittest.TestCase):
         weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
         one_hot_labels = np.array([0,1,0])
         network[0].biases = biases
-        network[0].weights = weights
-        network[3].weights = np.reshape(np.arange(4.*2*3),(4*2, 3))
+        network[0].set_weights(weights)
+        network[3].set_weights(np.reshape(np.arange(4.*2*3),(4*2, 3)))
         one_hot_labels = np.array([[0,1,0]])
 
         self.assertLess(compare_all_weight_derivatives(network, [image],
              one_hot_labels), 0.0001)
         self.assertLess(compare_all_node_derivatives(network, image,
                      one_hot_labels[0]), 0.0001)
+
+    def test_small_cnn(self):
+        """Tests the output of a conv layer+relu+maxpool+dense layer+softmax layer
+        Equivalent to in keras
+           [<keras.layers.convolutional.Conv2D at 0x12cea4be0>,
+            <keras.layers.pooling.MaxPooling2D at 0x12ce75630>,
+            <keras.layers.core.Dense at 0x12cfbbda0>]
+        """
+        image=np.reshape(np.arange(16.),(4,4)).flatten()
+        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
+                  dnn_homebrew.ReluLayer(4*4*2),
+                  dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
+                  dnn_homebrew.DenseLayer(2*2*2,3)
+                  ]
+        biases = np.array([1.,2.])
+        weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
+        one_hot_labels = np.array([0,1,0])
+        network[0].biases = biases
+        network[0].set_weights(weights)
+        network[3].set_weights(np.reshape(np.arange(4.*2*3),(4*2, 3)))
+
+        activations = [image]
+        for layer in network:
+            activations.append(layer.forward(activations[-1]))
+
+        first_layer_output= np.array([[[[   74.,   165.],
+         [  122.,   285.],
+         [  155.,   372.],
+         [  104.,   267.]],
+
+        [[  172.,   416.],
+         [  259.,   665.],
+         [  295.,   782.],
+         [  187.,   539.]],
+
+        [[  280.,   740.],
+         [  403.,  1133.],
+         [  439.,  1250.],
+         [  271.,   839.]],
+
+        [[  140.,   519.],
+         [  188.,   783.],
+         [  203.,   852.],
+         [  114.,   565.]]]])
+
+        self.assertEqual(first_layer_output.flatten().tolist(),
+                            activations[1].flatten().tolist())
+
+        second_layer_output = np.array([[[[  259.,   665.],
+         [  295.,   782.]],
+
+        [[  403.,  1133.],
+         [  439.,  1250.]]]])
+
+        self.assertEqual(second_layer_output.flatten().tolist(),
+                            activations[3].flatten().tolist())
+
+        third_layer_output = np.array([[ 66786.,  72012.,  77238.]])
+
+        self.assertEqual(third_layer_output.flatten().tolist(),
+                            activations[4].flatten().tolist())
+
 
 
     def test_single_conv_layer(self):
@@ -193,11 +255,12 @@ class TestNetwork(unittest.TestCase):
         biases = np.array([1.])
         weights = np.reshape(np.arange(9),(1,1,3,3))
         network[0].biases = biases
-        network[0].weights = weights
+        network[0].set_weights(weights)
 
         output = dnn_homebrew.forward(network, image.flatten())
         true_sum = 3406.0
         my_sum = np.sum(output)
+
         self.assertEqual(my_sum, true_sum)
 
     def test_single_max_pool_layer(self):
@@ -227,7 +290,7 @@ class TestNetwork(unittest.TestCase):
         weights = np.reshape(np.arange(12),(4,3))
         biases = np.arange(3)
         network=[nets.DenseLayer(4, 3)]
-        network[0].weights = weights
+        network[0].set_weights(weights)
         network[0].biases=biases
         output = dnn_homebrew.forward(network, image.flatten())
         my_sum = np.sum(output)

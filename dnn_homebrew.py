@@ -84,6 +84,10 @@ class DenseLayer(Layer):
         self.weights_gradient = np.zeros(self.weights.shape)
         self.biases_gradient = np.zeros(self.biases.shape)
 
+    def set_weights(self, weights):
+        assert(weights.shape == self.input_dim + self.output_dim)
+        self.weights = weights
+
 class ReluLayer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim, input_dim)
@@ -193,6 +197,9 @@ class ConvLayer(Layer):
             np.prod(img_shape) * output_channels
         )
         self.img_shape = img_shape
+        self.input_channels = input_channels
+        self.kernel_shape = kernel_shape
+        self.output_channels = output_channels
 
         # find some weights
         weights_shape = (input_channels, output_channels) + kernel_shape
@@ -210,11 +217,11 @@ class ConvLayer(Layer):
         )
 
     def forward(self, input):
-        input_channels, output_channels = self.weights.shape[:2]
+        #input_channels, output_channels = self.weights.shape[:2]
         assert input.shape == self.input_dim
 
-        input = input.reshape((input_channels,) + self.img_shape)
-        output = np.zeros((output_channels,) + self.img_shape)
+        input = input.reshape((self.input_channels,) + self.img_shape)
+        output = np.zeros((self.output_channels,) + self.img_shape)
 
         for input_index, input_channel in enumerate(input):
             for output_index, output_channel in enumerate(output):
@@ -226,6 +233,9 @@ class ConvLayer(Layer):
                     )
 
         output += self.biases.reshape((-1, 1, 1))
+
+        #output = output.transpose(1,2,0)
+
         output = output.flatten()
 
         assert output.shape == self.output_dim
@@ -237,12 +247,12 @@ class ConvLayer(Layer):
 
         # unpack the gradient and activations
         rows, cols = self.img_shape
-        input_channels, output_channels = self.weights.shape[:2]
-        kernel_shape = self.weights.shape[-2:]
-        row_offset = kernel_shape[0] // 2
-        col_offset = kernel_shape[1] // 2
-        activations = activations.reshape((input_channels,) + self.img_shape)
-        gradient = gradient.reshape((output_channels,) + self.img_shape)
+        #input_channels, output_channels = self.weights.shape[:2]
+        #kernel_shape = self.weights.shape[-2:]
+        row_offset = self.kernel_shape[0] // 2
+        col_offset = self.kernel_shape[1] // 2
+        activations = activations.reshape((self.input_channels,) + self.img_shape)
+        gradient = gradient.reshape((self.output_channels,) + self.img_shape)
 
         # calculate biases
         self.biases_gradient += gradient.sum(axis=(1,2))
@@ -253,16 +263,16 @@ class ConvLayer(Layer):
                 activations_subarray = activations[:,
                     max(-i, 0):min(rows-i, rows),
                     max(-j, 0):min(cols-j, cols)
-                ].reshape((input_channels, -1))
+                ].reshape((self.input_channels, -1))
                 gradient_subarray = gradient[:,
                     max(i, 0):min((rows + i), rows),
                     max(j, 0):min((cols + j), cols)
-                ].reshape((output_channels, -1)).T
+                ].reshape((self.output_channels, -1)).T
                 self.weights_gradient[:,:,i+row_offset,j+row_offset] += \
                     np.dot(activations_subarray, gradient_subarray)
 
         self.weights_gradient = self.weights_gradient[:,:,::-1,::-1]
-        
+
         # previous gradient
         previous_gradient = np.zeros(activations.shape)
         for act_index, activation_channel in enumerate(activations):
@@ -272,7 +282,18 @@ class ConvLayer(Layer):
                     self.weights[act_index, grad_index, ::-1, ::-1],
                     mode='same'
                 )
-        return previous_gradient.reshape((-1,))
+
+
+        #previous_gradient.transpose(1,2,0)
+        previous_gradient = previous_gradient.reshape((-1,))
+
+
+        return previous_gradient
+
+    def set_weights(self, weights):
+        assert(weights.shape ==  (self.input_channels, self.output_channels) \
+                                  + self.kernel_shape)
+        self.weights = weights
 
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array
