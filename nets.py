@@ -10,7 +10,7 @@ def setup_perceptron(images, labels):
 
 
 def setup_two_layer_beast(images, labels):
-    intermediate_layer_size = 50
+    intermediate_layer_size = 100
     return [
         DenseLayer(images.shape[1], intermediate_layer_size),
         ReluLayer(intermediate_layer_size),
@@ -19,9 +19,9 @@ def setup_two_layer_beast(images, labels):
     ]
 
 def setup_three_layer_mnist():
-    channels0 = 32
-    channels1 = 64
-    neurons2 = 1024
+    channels0 = 16
+    channels1 = 32
+    neurons2 = 100
     network = [
         ConvLayer((28,28), (5, 5), 1, channels0),
         ReluLayer(28 * 28 * channels0),
@@ -31,7 +31,7 @@ def setup_three_layer_mnist():
         ReluLayer(14 * 14 * channels1),
         MaxPoolLayer((14, 14), (2, 2), channels1),
 
-        DenseLayer(7 * 7 * channels1, neurons2),
+        DenseLayer((7, 7, channels1), neurons2),
         ReluLayer(neurons2),
 
         DenseLayer(neurons2, 10),
@@ -41,6 +41,8 @@ def setup_three_layer_mnist():
     assert_layer_dimensions_align(network)
 
     return network
+
+
 
 def load_network(name, images, labels):
     if name == "perceptron":

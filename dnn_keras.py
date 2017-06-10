@@ -37,17 +37,34 @@ def build_two_layer_model():
     images = images.astype(np.float32)
     test_images = test_images.astype(np.float32)
 
-    images /= 255.0
-    test_images /= 255.0
-
     model=Sequential()
-    model.add(Dense(50, activation='relu', input_shape=(num_pixels,), name="main" ))
+    model.add(Dense(100, activation='relu', input_shape=(num_pixels,), name="main" ))
     model.add(Dense(num_classes, activation='softmax'))
 
-    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'], batch_size=100, epochs=2)
+    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
 
-    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels))
+    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), epochs=3)
     model.save('two_layer.h5')
+
+def build_perceptron():
+    print("Building Perceptron")
+    images, one_hot_labels = data.load_train_mnist()
+    test_images, one_hot_test_labels = data.load_test_mnist()
+
+    num_classes= 10
+    num_images = images.shape[0]
+    images = images.reshape((num_images,28,28,1))
+
+
+    num_pixels = images.shape[1]
+    model=Sequential()
+    model.add(Flatten(input_shape=(num_pixels,num_pixels,1)))
+    model.add(Dense(num_classes, activation='softmax'))
+    model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
+    model.fit(images, one_hot_labels, epochs=1)
+
+    model.save("perceptron.h5")
+    print("Built Perceptron")
 
 def build_small_conv_model():
     images, one_hot_labels = data.load_train_mnist()
@@ -63,21 +80,21 @@ def build_small_conv_model():
     test_images = test_images.reshape((num_test_images,28,28,1))
 
     model=Sequential()
-    model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same", activation="relu"))
+    model.add(Conv2D(16, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same", activation="relu"))
     model.add(MaxPooling2D(2,2))
-    #model.add(Conv2D(64, (5, 5), padding="same", activation="relu"))
-    #model.add(MaxPooling2D(2,2))
+    model.add(Conv2D(32, (5, 5), padding="same", activation="relu"))
+    model.add(MaxPooling2D(2,2))
     model.add(Flatten())
-    model.add(Dense(128))
+    model.add(Dense(100))
     model.add(Dense(num_classes, activation='softmax', name="final"))
 
     print(model.summary())
     print(test_images.shape)
 
     model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
-    model.save("small_conv_improved.h5")
+    #model.save("small_conv_improved.h5")
 
-    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), batch_size=1000, epochs=1)
+    model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), epochs=3)
     model.save("small_conv_improved.h5")
 
 def build_identity_conv_model():

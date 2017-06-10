@@ -2,6 +2,8 @@ import unittest
 import nets
 import dnn_homebrew
 import numpy as np
+import weights
+import data
 
 def manual_weight_derivative(network, images, labels, layer_index, weight_index):
     """Calculate the partial derivative of loss wrt single weight
@@ -300,7 +302,24 @@ class TestNetwork(unittest.TestCase):
         self.assertEqual(my_sum, true_sum)
 
 
+class TestKerasNetwork(unittest.TestCase):
+    def test_keras_perceptron(self):
+        test_images, test_labels = data.load_test_mnist()
+        network = weights.load_perceptron('perceptron.h5')
+        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
+        self.assertTrue(np.allclose(acc, 0.88, atol = 1e-2))
 
+    def test_keras_two_layer(self):
+        test_images, test_labels = data.load_test_mnist()
+        network = weights.load_two_layer('two_layer.h5')
+        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
+        self.assertTrue(np.allclose(acc, 0.9519, atol = 1e-2))
+
+    def test_keras_small_conv(self):
+        test_images, test_labels = data.load_test_mnist()
+        network = weights.load_small_conv('small_conv_improved.h5')
+        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
+        print(acc)
 
 
 if __name__ == '__main__':

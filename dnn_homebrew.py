@@ -30,6 +30,12 @@ class Layer:
             self.weights -= self.weights_gradient * step_size
             self.biases -= self.biases_gradient * step_size
 
+    def set_weights(self, weights):
+        assert False, "%s doesn't take weights." % type(self).__name__
+
+    def set_keras_weights(self, keras_weights):
+        assert False, "%s doesn't take weights." % type(self).__name__
+
 class SoftmaxLayer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim, input_dim)
@@ -91,6 +97,12 @@ class DenseLayer(Layer):
     def set_weights(self, weights):
         assert(weights.shape == self.input_dim + self.output_dim)
         self.weights = weights
+
+    def set_keras_weights(self, keras_weights):
+        input_dims = len(self.input_dim.shape)
+        axis_order = \
+            (input_dims - 1,) + tuple(range(input_dims - 1)) + (input_dims,)
+        self.set_weights(keras_weights.transpose(axis_order))
 
 class ReluLayer(Layer):
     def __init__(self, input_dim):
@@ -183,8 +195,6 @@ class MaxPoolLayer(Layer):
 
     def reset_gradient(self):
         super().reset_gradient()
-
-
 
 class ConvLayer(Layer):
     def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
@@ -302,6 +312,10 @@ class ConvLayer(Layer):
         self.weights = weights
 
     def set_keras_weights(self, keras_weights):
+<<<<<<< HEAD
+=======
+        # nothing to do here
+>>>>>>> 00f78587a6e9d28b020530d1398122f4afc2ea3c
         self.set_weights(keras_weights)
 
 def convolve(matrix, kernel, mode):
@@ -318,22 +332,6 @@ def assert_layer_dimensions_align(network):
         assert input_dim == output_dim, "%s != %s" % (input_dim, output_dim)
         output_dim = layer.output_dim
 
-
-# _________________________________________________________________
-# Layer (type)                 Output Shape              Param #
-# =================================================================
-# conv2d_1 (Conv2D)            (None, 24, 24, 32)        832
-# _________________________________________________________________
-# max_pooling2d_1 (MaxPooling2 (None, 12, 12, 32)        0
-# _________________________________________________________________
-# conv2d_2 (Conv2D)            (None, 8, 8, 64)          51264
-# _________________________________________________________________
-# flatten_1 (Flatten)          (None, 4096)              0
-# _________________________________________________________________
-# dense_1 (Dense)              (None, 1024)              4195328
-# _________________________________________________________________
-# final (Dense)                (None, 10)                10250
-# =================================================================
 
 def print_num_params(network):
     def print_params(*params):
