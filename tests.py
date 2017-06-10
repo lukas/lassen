@@ -188,17 +188,21 @@ class TestNetwork(unittest.TestCase):
             <keras.layers.core.Dense at 0x12cfbbda0>]
         """
         image=np.reshape(np.arange(16.),(4,4)).flatten()
-        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
-                  dnn_homebrew.ReluLayer(4*4*2),
-                  dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
-                  dnn_homebrew.DenseLayer(2*2*2,3)
-                  ]
+        network= [
+            dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
+            dnn_homebrew.ReluLayer(4*4*2),
+            dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
+            dnn_homebrew.DenseLayer(2*2*2,3)
+        ]
         biases = np.array([1.,2.])
         weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
         one_hot_labels = np.array([0,1,0])
         network[0].biases = biases
         network[0].set_weights(weights)
-        network[3].set_weights(np.reshape(np.arange(4.*2*3),(4*2, 3)))
+        network[3].set_weights(np.arange(4.*2*3)
+            .reshape((2,2,2,3))
+            .transpose((2,0,1,3))
+            .reshape(2*2*2,3))
 
         activations = [image]
         for layer in network:
@@ -224,7 +228,7 @@ class TestNetwork(unittest.TestCase):
          [  203.,   852.],
          [  114.,   565.]]]])
 
-        self.assertEqual(first_layer_output.flatten().tolist(),
+        self.assertEqual(first_layer_output.transpose(3,1,2,0).flatten().tolist(),
                             activations[1].flatten().tolist())
 
         second_layer_output = np.array([[[[  259.,   665.],
@@ -233,15 +237,13 @@ class TestNetwork(unittest.TestCase):
         [[  403.,  1133.],
          [  439.,  1250.]]]])
 
-        self.assertEqual(second_layer_output.flatten().tolist(),
+        self.assertEqual(second_layer_output.transpose(3,1,2,0).flatten().tolist(),
                             activations[3].flatten().tolist())
 
         third_layer_output = np.array([[ 66786.,  72012.,  77238.]])
 
         self.assertEqual(third_layer_output.flatten().tolist(),
                             activations[4].flatten().tolist())
-
-
 
     def test_single_conv_layer(self):
         """Tests a convolutional layer
