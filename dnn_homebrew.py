@@ -30,6 +30,9 @@ class Layer:
             self.weights -= self.weights_gradient * step_size
             self.biases -= self.biases_gradient * step_size
 
+    def set_weights(self, weights):
+        self.weights = weights
+
 class SoftmaxLayer(Layer):
     def __init__(self, input_dim):
         super().__init__(input_dim, input_dim)
@@ -90,7 +93,7 @@ class DenseLayer(Layer):
 
     def set_weights(self, weights):
         assert(weights.shape == self.input_dim + self.output_dim)
-        self.weights = weights
+        super().set_weights(weights)
 
 class ReluLayer(Layer):
     def __init__(self, input_dim):
@@ -315,22 +318,6 @@ def assert_layer_dimensions_align(network):
         assert input_dim == output_dim, "%s != %s" % (input_dim, output_dim)
         output_dim = layer.output_dim
 
-
-# _________________________________________________________________
-# Layer (type)                 Output Shape              Param #
-# =================================================================
-# conv2d_1 (Conv2D)            (None, 24, 24, 32)        832
-# _________________________________________________________________
-# max_pooling2d_1 (MaxPooling2 (None, 12, 12, 32)        0
-# _________________________________________________________________
-# conv2d_2 (Conv2D)            (None, 8, 8, 64)          51264
-# _________________________________________________________________
-# flatten_1 (Flatten)          (None, 4096)              0
-# _________________________________________________________________
-# dense_1 (Dense)              (None, 1024)              4195328
-# _________________________________________________________________
-# final (Dense)                (None, 10)                10250
-# =================================================================
 
 def print_num_params(network):
     def print_params(*params):
