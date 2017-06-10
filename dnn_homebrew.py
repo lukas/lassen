@@ -58,26 +58,29 @@ class SoftmaxLayer(Layer):
 class DenseLayer(Layer):
     def __init__(self, input_dim, output_dim):
         super().__init__(input_dim, output_dim)
-        self.weights = np.zeros((input_dim, output_dim))
-        self.biases = np.zeros(output_dim)
+        self.weights = np.zeros(self.input_dim + self.output_dim)
+        self.biases = np.zeros(self.output_dim)
+        self.input_elts = np.product(self.input_dim)
 
     def __str__(self):
-        return "DenseLayer(%s, %s) [%s -> %s]" % (
-            self.input_dim[0],
-            self.output_dim[0],
+        return "DenseLayer [%s -> %s]" % (
             self.input_dim,
             self.output_dim
         )
 
     def forward(self, input):
-        return np.dot(self.weights.T, input) + self.biases
+        return np.dot(self.weights
+            .reshape((self.input_elts, -1))
+            .T, input.flat) + self.biases
 
     def backward(self, activations, gradient):
         assert gradient.shape == self.output_dim
         assert activations.shape == self.input_dim
 
         self.biases_gradient += gradient
-        self.weights_gradient += np.outer(activations, gradient)
+        self.weights_gradient += \
+            np.outer(activations.flat, gradient).reshape(
+                self.input_dim + self.output_dim)
 
         return np.dot(self.weights, gradient)
 
