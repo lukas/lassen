@@ -117,10 +117,10 @@ class TestNetwork(unittest.TestCase):
         (3) biases = [0,1,2]
         """
 
-        image=np.arange(4.)
-        weights = np.reshape(np.arange(12.),(4,3))
+        image=np.arange(5.0 * 7.0).reshape((5, 7))
+        weights = np.reshape(np.arange(5.0 * 7.0 * 3.0), (5, 7, 3))
         biases = np.arange(3)
-        network=[nets.DenseLayer(4, 3), nets.SoftmaxLayer(3)]
+        network=[nets.DenseLayer((5, 7), 3), nets.SoftmaxLayer(3)]
         network[0].set_weights(weights)
         network[0].biases=biases
         one_hot_labels = np.array([[0,1,0]])
@@ -192,7 +192,7 @@ class TestNetwork(unittest.TestCase):
             dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
             dnn_homebrew.ReluLayer(4*4*2),
             dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
-            dnn_homebrew.DenseLayer(2*2*2,3)
+            dnn_homebrew.DenseLayer((2,2,2),3)
         ]
         biases = np.array([1.,2.])
         weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
@@ -201,8 +201,8 @@ class TestNetwork(unittest.TestCase):
         network[0].set_weights(weights)
         network[3].set_weights(np.arange(4.*2*3)
             .reshape((2,2,2,3))
-            .transpose((2,0,1,3))
-            .reshape(2*2*2,3))
+            .transpose((2,0,1,3)))
+            # .reshape(2*2*2,3))
 
         activations = [image]
         for layer in network:
