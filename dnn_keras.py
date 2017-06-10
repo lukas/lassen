@@ -65,10 +65,10 @@ def build_small_conv_model():
     model=Sequential()
     model.add(Conv2D(32, (5, 5), input_shape=(num_pixels,num_pixels,1), padding="same", activation="relu"))
     model.add(MaxPooling2D(2,2))
-    model.add(Conv2D(64, (5, 5), padding="same", activation="relu"))
-    model.add(MaxPooling2D(2,2))
+    #model.add(Conv2D(64, (5, 5), padding="same", activation="relu"))
+    #model.add(MaxPooling2D(2,2))
     model.add(Flatten())
-    model.add(Dense(1024))
+    model.add(Dense(128))
     model.add(Dense(num_classes, activation='softmax', name="final"))
 
     print(model.summary())

@@ -298,6 +298,9 @@ class ConvLayer(Layer):
                                   + self.kernel_shape)
         self.weights = weights
 
+    def set_keras_weights(self, keras_weights):
+        self.set_weights(keras_weights)
+
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array
     return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant' )
