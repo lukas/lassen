@@ -31,7 +31,10 @@ class Layer:
             self.biases -= self.biases_gradient * step_size
 
     def set_weights(self, weights):
-        self.weights = weights
+        assert False, "%s doesn't take weights." % type(self).__name__
+
+    def set_keras_weights(self, keras_weights):
+        assert False, "%s doesn't take weights." % type(self).__name__
 
 class SoftmaxLayer(Layer):
     def __init__(self, input_dim):
@@ -93,7 +96,13 @@ class DenseLayer(Layer):
 
     def set_weights(self, weights):
         assert(weights.shape == self.input_dim + self.output_dim)
-        super().set_weights(weights)
+        self.weights = weights
+
+    def set_keras_weights(self, keras_weights):
+        input_dims = len(self.input_dim.shape)
+        axis_order = \
+            (input_dims - 1,) + tuple(range(input_dims - 1)) + (input_dims,)
+        self.set_weights(keras_weights.transpose(axis_order))
 
 class ReluLayer(Layer):
     def __init__(self, input_dim):
@@ -186,8 +195,6 @@ class MaxPoolLayer(Layer):
 
     def reset_gradient(self):
         super().reset_gradient()
-
-
 
 class ConvLayer(Layer):
     def __init__(self, img_shape, kernel_shape, input_channels, output_channels):
@@ -303,6 +310,10 @@ class ConvLayer(Layer):
         assert(weights.shape ==  (self.input_channels, self.output_channels) \
                                   + self.kernel_shape)
         self.weights = weights
+
+    def set_keras_weights(self, keras_weights):
+        # nothing to do here
+        self.set_weights(keras_weights)
 
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array
