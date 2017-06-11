@@ -5,7 +5,7 @@ from keras.layers.pooling import MaxPooling2D
 from keras.optimizers import SGD, Adam
 from keras.models import Sequential, Model, load_model
 from tensorflow.python import pywrap_tensorflow
-import data
+import mnist_data
 
 import keras.regularizers
 import numpy as np
@@ -25,8 +25,8 @@ def display_images(images, labels, row_count, col_count):
         print(label)
 
 def build_two_layer_model():
-    images, one_hot_labels = data.load_train_mnist()
-    test_images, one_hot_test_labels = data.load_test_mnist()
+    images, one_hot_labels = mnist_data.load_train_mnist()
+    test_images, one_hot_test_labels = mnist_data.load_test_mnist()
     #display_images(images, labels, 28, 28)
     num_classes= 10
     num_images = images.shape[0]
@@ -44,12 +44,12 @@ def build_two_layer_model():
     model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
 
     model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), epochs=3)
-    model.save('two_layer.h5')
+    model.save('models/two_layer.h5')
 
 def build_perceptron():
     print("Building Perceptron")
-    images, one_hot_labels = data.load_train_mnist()
-    test_images, one_hot_test_labels = data.load_test_mnist()
+    images, one_hot_labels = mnist_data.load_train_mnist()
+    test_images, one_hot_test_labels = mnist_data.load_test_mnist()
 
     num_classes= 10
     num_images = images.shape[0]
@@ -63,12 +63,12 @@ def build_perceptron():
     model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
     model.fit(images, one_hot_labels, epochs=1)
 
-    model.save("perceptron.h5")
+    model.save("models/perceptron.h5")
     print("Built Perceptron")
 
 def build_small_conv_model():
-    images, one_hot_labels = data.load_train_mnist()
-    test_images, one_hot_test_labels = data.load_test_mnist()
+    images, one_hot_labels = mnist_data.load_train_mnist()
+    test_images, one_hot_test_labels = mnist_data.load_test_mnist()
 
     num_classes= 10
     num_images = images.shape[0]
@@ -92,10 +92,10 @@ def build_small_conv_model():
     print(test_images.shape)
 
     model.compile(optimizer="sgd", verbose=2, loss= 'categorical_crossentropy', metrics=['accuracy'])
-    #model.save("small_conv_improved.h5")
+    #model.save("models/small_conv_improved.h5")
 
     model.fit(images, one_hot_labels, validation_data=(test_images, one_hot_test_labels), epochs=3)
-    model.save("small_conv_improved.h5")
+    model.save("models/small_conv_improved.h5")
 
 def build_identity_conv_model():
     msimple = Sequential()
@@ -105,7 +105,7 @@ def build_identity_conv_model():
     msimple.layers[0].set_weights(w)
 
 def test_model(model_file):
-    test_images, one_hot_test_labels = data.load_test_mnist()
+    test_images, one_hot_test_labels = mnist_data.load_test_mnist()
     num_test_images = test_images.shape[0]
 
     test_images = test_images.reshape((num_test_images,28,28,1))
@@ -130,4 +130,4 @@ def test_model(model_file):
 
 if __name__ == "__main__":
 #    build_small_conv_model()
-    test_model("small_conv_improved.h5")
+    test_model("models/small_conv_improved.h5")

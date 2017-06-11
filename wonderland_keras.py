@@ -14,9 +14,7 @@ from keras.models import load_model
 
 import click
 
-CACHE_FILENAME = 'wonderdland_preprocess_cache.pickle'
-
-
+CACHE_FILENAME = 'cache/wonderland_preprocess.pickle'
 
 @click.group()
 def cli():

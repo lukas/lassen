@@ -1,9 +1,8 @@
-
 from tensorflow.python import pywrap_tensorflow
 import h5py
-import nets
-import data
-import dnn_homebrew
+import mnist_lassen
+import mnist_data
+import lassen
 
 def load_weights_from_tensorflow(filename):
     reader = pywrap_tensorflow.NewCheckpointReader(filename)
@@ -53,8 +52,8 @@ def load_three_layer_weights_keras(network, filename):
 
 
 def load_perceptron(filename):
-    test_images, test_labels = data.load_test_mnist()
-    network = nets.setup_perceptron(test_images, test_labels)
+    test_images, test_labels = mnist_data.load_test_mnist()
+    network = mnist_lassen.setup_perceptron(test_images, test_labels)
     weights, biases = load_weights_from_keras_perceptron(filename)
     network[0].weights = weights
     network[0].biases = biases
@@ -62,8 +61,8 @@ def load_perceptron(filename):
 
 def load_two_layer(filename):
 
-    test_images, test_labels = data.load_test_mnist()
-    network = nets.setup_two_layer_beast(test_images, test_labels)
+    test_images, test_labels = mnist_data.load_test_mnist()
+    network = mnist_lassen.setup_two_layer_beast(test_images, test_labels)
     weights0, biases0, weights1, biases1 = load_weights_from_keras_two_layer(filename)
 
     network[0].weights = weights0
@@ -73,8 +72,8 @@ def load_two_layer(filename):
     return network
 
 def load_small_conv(filename):
-    test_images, test_labels = data.load_test_mnist()
-    network = nets.setup_three_layer_mnist()
+    test_images, test_labels = mnist_data.load_test_mnist()
+    network = mnist_lassen.setup_three_layer_mnist()
 
     set_layer_weights_keras(network, 0, filename, 'conv2d_1')
     set_layer_weights_keras(network, 3, filename, 'conv2d_2')
@@ -85,4 +84,4 @@ def load_small_conv(filename):
     return network
 
 if __name__ == "__main__":
-    load_weights_from_keras("perceptron.h5")
+    load_weights_from_keras("models/perceptron.h5")

@@ -1,9 +1,9 @@
 import unittest
-import nets
-import dnn_homebrew
+import mnist_lassen
+import lassen
 import numpy as np
 import weights
-import data
+import mnist_data
 
 def manual_weight_derivative(network, images, labels, layer_index, weight_index):
     """Calculate the partial derivative of loss wrt single weight
@@ -11,9 +11,9 @@ def manual_weight_derivative(network, images, labels, layer_index, weight_index)
 
     epsilon = 0.005
     layer = network[layer_index]
-    loss, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    loss, acc = lassen.gradient_batch(network, images, labels)
     layer.weights[weight_index] += epsilon
-    loss2, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    loss2, acc = lassen.gradient_batch(network, images, labels)
     manual_gradient = (loss2 - loss) / epsilon
     # move things back
     layer.weights[weight_index] -= epsilon
@@ -25,7 +25,7 @@ def analytic_weight_derivative(network, images, labels, layer_index, weight_inde
     by backpropogation.  Should be the same as manual_derivative
     if we did our math properly"""
 
-    loss, acc = dnn_homebrew.gradient_batch(network, images, labels)
+    loss, acc = lassen.gradient_batch(network, images, labels)
     layer = network[layer_index]
     computed_gradient = layer.weights_gradient[weight_index]
 
@@ -122,7 +122,7 @@ class TestNetwork(unittest.TestCase):
         image=np.arange(5.0 * 7.0).reshape((5, 7))
         weights = np.reshape(np.arange(5.0 * 7.0 * 3.0), (5, 7, 3))
         biases = np.arange(3)
-        network=[nets.DenseLayer((5, 7), 3), nets.SoftmaxLayer(3)]
+        network=[mnist_lassen.DenseLayer((5, 7), 3), mnist_lassen.SoftmaxLayer(3)]
         network[0].set_weights(weights)
         network[0].biases=biases
         one_hot_labels = np.array([[0,1,0]])
@@ -142,9 +142,9 @@ class TestNetwork(unittest.TestCase):
         label = 1
         """
         image=np.reshape(np.arange(16.),(4,4)).flatten()
-        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 1),
-                  dnn_homebrew.DenseLayer(4*4,3),
-                  dnn_homebrew.SoftmaxLayer(3)]
+        network= [lassen.ConvLayer((4,4), (3, 3), 1, 1),
+                  lassen.DenseLayer(4*4,3),
+                  lassen.SoftmaxLayer(3)]
         biases = np.array([1.])
         weights = np.reshape(np.arange(9.),(1,1,3,3))
         one_hot_labels = np.array([0,1,0])
@@ -164,11 +164,11 @@ class TestNetwork(unittest.TestCase):
         """
 
         image=np.reshape(np.arange(16.),(4,4)).flatten()
-        network= [dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
-                  dnn_homebrew.ReluLayer(4*4*2),
-                  dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
-                  dnn_homebrew.DenseLayer(2*2*2,3),
-                  dnn_homebrew.SoftmaxLayer(3)]
+        network= [lassen.ConvLayer((4,4), (3, 3), 1, 2),
+                  lassen.ReluLayer(4*4*2),
+                  lassen.MaxPoolLayer((4,4), (2,2), 2),
+                  lassen.DenseLayer(2*2*2,3),
+                  lassen.SoftmaxLayer(3)]
         biases = np.array([1.,2.])
         weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
         one_hot_labels = np.array([0,1,0])
@@ -191,10 +191,10 @@ class TestNetwork(unittest.TestCase):
         """
         image=np.reshape(np.arange(16.),(4,4)).flatten()
         network= [
-            dnn_homebrew.ConvLayer((4,4), (3, 3), 1, 2),
-            dnn_homebrew.ReluLayer(4*4*2),
-            dnn_homebrew.MaxPoolLayer((4,4), (2,2), 2),
-            dnn_homebrew.DenseLayer((2,2,2),3)
+            lassen.ConvLayer((4,4), (3, 3), 1, 2),
+            lassen.ReluLayer(4*4*2),
+            lassen.MaxPoolLayer((4,4), (2,2), 2),
+            lassen.DenseLayer((2,2,2),3)
         ]
         biases = np.array([1.,2.])
         weights = np.reshape(np.arange(3.*3*2),(1,2,3,3))
@@ -258,13 +258,13 @@ class TestNetwork(unittest.TestCase):
         sum of output should be 3406"""
 
         image=np.reshape(np.arange(16),(4,4))
-        network= [nets.ConvLayer((4,4), (3, 3), 1, 1)]
+        network= [mnist_lassen.ConvLayer((4,4), (3, 3), 1, 1)]
         biases = np.array([1.])
         weights = np.reshape(np.arange(9),(1,1,3,3))
         network[0].biases = biases
         network[0].set_weights(weights)
 
-        output = dnn_homebrew.forward(network, image.flatten())
+        output = lassen.forward(network, image.flatten())
         true_sum = 3406.0
         my_sum = np.sum(output)
 
@@ -279,8 +279,8 @@ class TestNetwork(unittest.TestCase):
 
         image=np.reshape(np.arange(0,32),(4,4,2))
         image=np.transpose(image, (2,0,1))
-        network=[nets.MaxPoolLayer((4,4), (2,2), 2)]
-        output = dnn_homebrew.forward(network, image.flatten())
+        network=[mnist_lassen.MaxPoolLayer((4,4), (2,2), 2)]
+        output = lassen.forward(network, image.flatten())
 
         my_sum = np.sum(output)
         true_sum=164.0
@@ -296,10 +296,10 @@ class TestNetwork(unittest.TestCase):
         image=np.arange(4)
         weights = np.reshape(np.arange(12),(4,3))
         biases = np.arange(3)
-        network=[nets.DenseLayer(4, 3)]
+        network=[mnist_lassen.DenseLayer(4, 3)]
         network[0].set_weights(weights)
         network[0].biases=biases
-        output = dnn_homebrew.forward(network, image.flatten())
+        output = lassen.forward(network, image.flatten())
         my_sum = np.sum(output)
         true_sum=147.0
         self.assertEqual(my_sum, true_sum)
@@ -307,22 +307,22 @@ class TestNetwork(unittest.TestCase):
 
 class TestKerasNetwork(unittest.TestCase):
     def test_keras_perceptron(self):
-        test_images, test_labels = data.load_test_mnist()
-        network = weights.load_perceptron('perceptron.h5')
-        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
+        test_images, test_labels = mnist_data.load_test_mnist()
+        network = weights.load_perceptron('models/perceptron.h5')
+        acc = lassen.accuracy(network, test_images, test_labels)
         self.assertTrue(np.allclose(acc, 0.88, atol = 1e-2))
 
     def test_keras_two_layer(self):
-        test_images, test_labels = data.load_test_mnist()
-        network = weights.load_two_layer('two_layer.h5')
-        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
+        test_images, test_labels = mnist_data.load_test_mnist()
+        network = weights.load_two_layer('models/two_layer.h5')
+        acc = lassen.accuracy(network, test_images, test_labels)
         self.assertTrue(np.allclose(acc, 0.9519, atol = 1e-2))
 
     def test_keras_small_conv(self):
-        test_images, test_labels = data.load_test_mnist()
-        network = weights.load_small_conv('small_conv_improved.h5')
+        test_images, test_labels = mnist_data.load_test_mnist()
+        network = weights.load_small_conv('models/small_conv_improved.h5')
 
-        acc = dnn_homebrew.accuracy(network, test_images[:100], test_labels[:100])
+        acc = lassen.accuracy(network, test_images[:100], test_labels[:100])
         self.assertTrue(np.allclose(acc, 0.96, atol = 1e-2))
 
 

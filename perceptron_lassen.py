@@ -1,4 +1,4 @@
-import data, weights
+import mnist_data, weights
 import numpy as np
 import sys
 
@@ -68,8 +68,8 @@ def sgd(images, labels, w, b, test_images, test_labels):
 
 
 def main():
-    images, labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
-    test_images, test_labels = data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
+    images, labels = mnist_data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
+    test_images, test_labels = mnist_data.load_mnist("data/t10k-images-idx3-ubyte","data/t10k-labels-idx1-ubyte")
     images = images / 255.0
     test_images = test_images / 255.0
 

@@ -1,4 +1,4 @@
-import data, weights, nets
+import mnist_data, weights, mnist_lassen
 import numpy as np
 
 import ast
@@ -326,6 +326,58 @@ class ConvLayer(Layer):
     def set_keras_weights(self, keras_weights):
         self.set_weights(keras_weights.transpose(2,3,0,1))
 
+class LSTMLayer(Layer):
+    def __init__(self, input_dim, output_dim):
+        super().__init__(input_dim, output_dim)
+        self.weights = np.zeros(self.input_dim + self.output_dim)
+        self.biases = np.zeros(self.output_dim)
+        self.input_elts = np.product(self.input_dim)
+
+    def __str__(self):
+        return "DenseLayer [%s -> %s]" % (
+            self.input_dim,
+            self.output_dim
+        )
+
+    def forward(self, input):
+        i = sigmoid(np.dot(w_i.T, x) + np.dot(u_i, h_old)+b_i)
+        c_tilde = np.tanh(np.dot(w_c.T, x)+np.dot(u_c, h_old)+b_c)
+        f = sigmoid(np.dot(w_f.T, x) + np.dot(u_f, h_old)+b_f)
+        c_new = i * c_tilde + f * c_old
+        o = sigmoid(np.dot(w_o.T, x) + np.dot(u_o, h_old)+b_o)
+        h_new = o * np.tanh(c_new)
+
+    def backward(self, activations, gradient):
+        assert gradient.shape == self.output_dim
+        assert activations.shape == self.input_dim
+
+        self.biases_gradient += gradient
+        self.weights_gradient += \
+            np.outer(activations.flat, gradient).reshape(
+                self.input_dim + self.output_dim)
+
+        return np.dot(self.weights, gradient)
+
+    def reset_gradient(self):
+        self.weights_gradient = np.zeros(self.weights.shape)
+        self.biases_gradient = np.zeros(self.biases.shape)
+
+    def set_weights(self, weights):
+        assert weights.shape == self.input_dim + self.output_dim, \
+            "Setting weights of dim %s which should be %s." % \
+            (str(weights.shape), str(self.input_dim + self.output_dim))
+        self.weights = weights
+
+    def set_keras_weights(self, keras_weights):
+        keras_shape = \
+            self.input_dim[1:] + (self.input_dim[0],) + self.output_dim
+        input_axes = len(self.input_dim)
+        axis_order = \
+            (input_axes - 1,) + tuple(range(input_axes - 1)) + (input_axes,)
+        weights = keras_weights.reshape(keras_shape).transpose(axis_order)
+        self.set_weights(weights)
+
+
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array
     return scipy.ndimage.convolve(matrix, kernel[::-1, ::-1], mode='constant' )
@@ -494,7 +546,7 @@ def test_identity(kernel_size, translate):
     ] = 1.0
 
     # load the images and run the newtwork
-    test_image = data.load_train_mnist()[0][0].astype(np.float64)
+    test_image = mnist_data.load_train_mnist()[0][0].astype(np.float64)
     out_image = conv_layer.forward(test_image)
 
     # compute the right answer (analytically)
@@ -522,10 +574,10 @@ def network_output():
 
 @cli.command()
 def three_layer_accuracy():
-    images, labels = data.load_train_mnist()
-    test_images, test_labels = data.load_test_mnist()
-    network = nets.load_network('three_layer_mnist', images, labels)
-    weights.load_three_layer_weights_keras(network, 'small_conv_improved.h5')
+    images, labels = mnist_data.load_train_mnist()
+    test_images, test_labels = mnist_data.load_test_mnist()
+    network = mnist_lassen.load_network('three_layer_mnist', images, labels)
+    weights.load_three_layer_weights_keras(network, 'models/small_conv_improved.h5')
     print("Second convnet weights", network[3].weights.shape)
     print("Second convnet weight", network[3].weights[0,0,:,:])
 
@@ -535,13 +587,13 @@ def three_layer_accuracy():
 
 @cli.command()
 def run():
-    images, labels = data.load_train_mnist()
-    test_images, test_labels = data.load_test_mnist()
+    images, labels = mnist_data.load_train_mnist()
+    test_images, test_labels = mnist_data.load_test_mnist()
 
     network = setup_three_layer_with_conv()
     set_random_weights(network)
 
-    weights.load_three_layer_weights_keras(network, 'small_conv.h5')
+    weights.load_three_layer_weights_keras(network, 'models/small_conv.h5')
 
     sgd(network, images, labels, test_images[:100], test_labels[:100])
 

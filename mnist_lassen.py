@@ -1,5 +1,4 @@
-
-from dnn_homebrew import DenseLayer, SoftmaxLayer, \
+from lassen import DenseLayer, SoftmaxLayer, \
     ReluLayer, MaxPoolLayer, ConvLayer, assert_layer_dimensions_align
 
 def setup_perceptron(images, labels):
