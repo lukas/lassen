@@ -355,12 +355,17 @@ class TestNetwork(unittest.TestCase):
         self.assertTrue(np.array_equal(lstm.b_c,  b_c))
         self.assertTrue(np.array_equal(lstm.b_o,  b_o))
 
+        h_old = np.zeros(hidden_states)
+        c_old = np.zeros(hidden_states)
+        x = np.arange(timesteps * input_dim) * 0.05
+
         # test that it works properly for one step - keras model
-        pred_input = np.arange(timesteps * input_dim).reshape(1,timesteps,input_dim) * 0.05
-        expected_output = model.predict(pred_input))
+        pred_input = x.reshape(1,timesteps,input_dim)
+        expected_output = model.predict(pred_input)
 
         # test that it works properly for one step - our model
-        
+        lstm.forward_onestep(h_old, c_old, x)
+        self.assertTrue(np.allclose(expected_output, lstm.h))
 
 class TestKerasNetwork(unittest.TestCase):
     def test_keras_perceptron(self):

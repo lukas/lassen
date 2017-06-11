@@ -373,7 +373,8 @@ class LSTMLayer(Layer):
     def forward(self, input):
         raise NotImplementedError
 
-    def forward_onestep(self, input):
+    def forward_onestep(self, h_old, c_old, x):
+
         """Advances the lstm forward one step, statefully."""
         # hard sigmoid function
         def sigmoid(x):
@@ -382,16 +383,16 @@ class LSTMLayer(Layer):
             return x
 
         # intermediate "gates"
-        i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i, self.h) + self.b_i)
-        f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f, self.h) + self.b_f)
-        o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o, self.h) + self.b_o)
+        i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i, h_old) + self.b_i)
+        f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f, h_old) + self.b_f)
+        o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o, h_old) + self.b_o)
 
         # new candidate
         c_tilde = np.tanh(np.dot(self.w_c.T, x) + np.dot(self.u_c, h_old) + self.b_c)
 
         # update memory state, c, and hidden output, h
         self.c = i * c_tilde + f * c_old
-        self.h = o * np.tanh(c_new)
+        self.h = o * np.tanh(self.c)
 
     def backward(self, activations, gradient):
         raise NotImplementedError
