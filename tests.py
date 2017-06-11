@@ -325,8 +325,5 @@ class TestKerasNetwork(unittest.TestCase):
         acc = lassen.accuracy(network, test_images[:100], test_labels[:100])
         self.assertTrue(np.allclose(acc, 0.96, atol = 1e-2))
 
-
-
-
 if __name__ == '__main__':
     unittest.main()

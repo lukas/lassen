@@ -327,17 +327,47 @@ class ConvLayer(Layer):
         self.set_weights(keras_weights.transpose(2,3,0,1))
 
 class LSTMLayer(Layer):
-    def __init__(self, input_dim, output_dim):
-        super().__init__(input_dim, output_dim)
-        self.weights = np.zeros(self.input_dim + self.output_dim)
-        self.biases = np.zeros(self.output_dim)
-        self.input_elts = np.product(self.input_dim)
+    def __init__(self, input_dim, hidden_dim, timesteps):
+        super().__init__(input_dim, hidden_dim)
+
+        # additional dimensi
+        self.hidden_dim = hidden_dim
+        self.timesteps = timesteps
+
+        # weights
+        self.w_i = np.zeros(input_dim, hidden_states)
+        self.w_f = np.zeros(input_dim, hidden_states)
+        self.w_c = np.zeros(input_dim, hidden_states)
+        self.w_o = np.zeros(input_dim, hidden_states)
+
+        # recurrent weights
+        self.u_i = np.zeros(hidden_states, hidden_states)
+        self.u_f = np.zeros(hidden_states, hidden_states)
+        self.u_c = np.zeros(hidden_states, hidden_states)
+        self.u_o = np.zeros(hidden_states, hidden_states)
+
+        # biases
+        self.b_i = np.zeros(hidden_states)
+        self.b_f = np.zeros(hidden_states)
+        self.b_c = np.zeros(hidden_states)
+        self.b_o = np.zeros(hidden_states)
+
+        # reset the state
+        self.reset_state()
 
     def __str__(self):
-        return "DenseLayer [%s -> %s]" % (
+        return "LSTMLayer (%s %s %s)[%s -> %s]" % (
+            self.input_dim,
+            self.hidden_dim,
+            self.timesteps,
             self.input_dim,
             self.output_dim
         )
+
+    def reset_state(self):
+        """Reset the state of h and c."""
+        self.h_old = np.zeros(hidden_states)
+        self.c_old = np.array(h_old)
 
     def forward(self, input):
         i = sigmoid(np.dot(w_i.T, x) + np.dot(u_i, h_old)+b_i)
@@ -346,6 +376,10 @@ class LSTMLayer(Layer):
         c_new = i * c_tilde + f * c_old
         o = sigmoid(np.dot(w_o.T, x) + np.dot(u_o, h_old)+b_o)
         h_new = o * np.tanh(c_new)
+
+    def forward_onestep(self, input):
+        """Advances the lstm forward one step, statefully."""
+
 
     def backward(self, activations, gradient):
         assert gradient.shape == self.output_dim
