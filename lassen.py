@@ -327,90 +327,118 @@ class ConvLayer(Layer):
         self.set_weights(keras_weights.transpose(2,3,0,1))
 
 class LSTMLayer(Layer):
-    def __init__(self, input_dim, hidden_dim, timesteps):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, x_len, h_len, timesteps):
+        super().__init__(x_len, h_len)
 
         # additional dimensi
-        self.hidden_dim = hidden_dim
+        self.x_len = x_len
+        self.h_len = h_len
         self.timesteps = timesteps
 
         # weights
-        self.w_i = np.zeros(input_dim, hidden_states)
-        self.w_f = np.zeros(input_dim, hidden_states)
-        self.w_c = np.zeros(input_dim, hidden_states)
-        self.w_o = np.zeros(input_dim, hidden_states)
+        self.w_i = np.zeros((x_len, h_len))
+        self.w_f = np.zeros((x_len, h_len))
+        self.w_c = np.zeros((x_len, h_len))
+        self.w_o = np.zeros((x_len, h_len))
 
         # recurrent weights
-        self.u_i = np.zeros(hidden_states, hidden_states)
-        self.u_f = np.zeros(hidden_states, hidden_states)
-        self.u_c = np.zeros(hidden_states, hidden_states)
-        self.u_o = np.zeros(hidden_states, hidden_states)
+        self.u_i = np.zeros((h_len, h_len))
+        self.u_f = np.zeros((h_len, h_len))
+        self.u_c = np.zeros((h_len, h_len))
+        self.u_o = np.zeros((h_len, h_len))
 
         # biases
-        self.b_i = np.zeros(hidden_states)
-        self.b_f = np.zeros(hidden_states)
-        self.b_c = np.zeros(hidden_states)
-        self.b_o = np.zeros(hidden_states)
+        self.b_i = np.zeros((h_len,))
+        self.b_f = np.zeros((h_len,))
+        self.b_c = np.zeros((h_len,))
+        self.b_o = np.zeros((h_len,))
 
         # reset the state
         self.reset_state()
 
     def __str__(self):
         return "LSTMLayer (%s %s %s)[%s -> %s]" % (
-            self.input_dim,
-            self.hidden_dim,
+            self.x_len,
+            self.h_len,
             self.timesteps,
-            self.input_dim,
+            self.x_len,
             self.output_dim
         )
 
     def reset_state(self):
         """Reset the state of h and c."""
-        self.h_old = np.zeros(hidden_states)
-        self.c_old = np.array(h_old)
+        self.h = np.zeros((self.h_len,))
+        self.c = np.zeros((self.h_len,))
 
     def forward(self, input):
-        i = sigmoid(np.dot(w_i.T, x) + np.dot(u_i, h_old)+b_i)
-        c_tilde = np.tanh(np.dot(w_c.T, x)+np.dot(u_c, h_old)+b_c)
-        f = sigmoid(np.dot(w_f.T, x) + np.dot(u_f, h_old)+b_f)
-        c_new = i * c_tilde + f * c_old
-        o = sigmoid(np.dot(w_o.T, x) + np.dot(u_o, h_old)+b_o)
-        h_new = o * np.tanh(c_new)
+        raise NotImplementedError
 
     def forward_onestep(self, input):
         """Advances the lstm forward one step, statefully."""
+        # hard sigmoid function
+        def sigmoid(x):
+            x = (0.2 * x) + 0.5
+            x = np.clip(x, 0, 1)
+            return x
 
+        # intermediate "gates"
+        i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i, self.h) + self.b_i)
+        f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f, self.h) + self.b_f)
+        o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o, self.h) + self.b_o)
+
+        # new candidate
+        c_tilde = np.tanh(np.dot(self.w_c.T, x) + np.dot(self.u_c, h_old) + self.b_c)
+
+        # update memory state, c, and hidden output, h
+        self.c = i * c_tilde + f * c_old
+        self.h = o * np.tanh(c_new)
 
     def backward(self, activations, gradient):
-        assert gradient.shape == self.output_dim
-        assert activations.shape == self.input_dim
-
-        self.biases_gradient += gradient
-        self.weights_gradient += \
-            np.outer(activations.flat, gradient).reshape(
-                self.input_dim + self.output_dim)
-
-        return np.dot(self.weights, gradient)
+        raise NotImplementedError
 
     def reset_gradient(self):
-        self.weights_gradient = np.zeros(self.weights.shape)
-        self.biases_gradient = np.zeros(self.biases.shape)
+        raise NotImplementedError
 
-    def set_weights(self, weights):
-        assert weights.shape == self.input_dim + self.output_dim, \
-            "Setting weights of dim %s which should be %s." % \
-            (str(weights.shape), str(self.input_dim + self.output_dim))
-        self.weights = weights
+    def set_weights(self,
+        w_i, w_f, w_c, w_o,
+        u_i, u_f, u_c, u_o,
+        b_i, b_f, b_c, b_o):
+
+        # make sure the shapes line up
+        for w in (w_i, w_f, w_c, w_o):
+            assert w.shape == (self.x_len, self.h_len)
+        for u in (u_i, u_f, u_c, u_o):
+            assert u.shape == (self.h_len, self.h_len)
+        for b in (b_i, b_f, b_c, b_o):
+            assert b.shape == (self.h_len,)
+
+        # assign all the weights
+        self.w_i, self.w_f, self.w_c, self.w_o = w_i, w_f, w_c, w_o
+        self.u_i, self.u_f, self.u_c, self.u_o = u_i, u_f, u_c, u_o
+        self.b_i, self.b_f, self.b_c, self.b_o = b_i, b_f, b_c, b_o
 
     def set_keras_weights(self, keras_weights):
-        keras_shape = \
-            self.input_dim[1:] + (self.input_dim[0],) + self.output_dim
-        input_axes = len(self.input_dim)
-        axis_order = \
-            (input_axes - 1,) + tuple(range(input_axes - 1)) + (input_axes,)
-        weights = keras_weights.reshape(keras_shape).transpose(axis_order)
-        self.set_weights(weights)
+        w1, w2, w3 = keras_weights
+        print("Assertion error:", w1.shape, (self.x_len, self.h_len * 4))
+        assert w1.shape == (self.x_len, self.h_len * 4)
+        assert w2.shape == (self.h_len, self.h_len * 4)
+        assert w3.shape == (self.h_len * 4,)
 
+        self.set_weights(
+            w1[:, self.h_len * 0 : self.h_len * 1],
+            w1[:, self.h_len * 1 : self.h_len * 2],
+            w1[:, self.h_len * 2 : self.h_len * 3],
+            w1[:, self.h_len * 3 : self.h_len * 4],
+
+            w2[:, self.h_len * 0 : self.h_len * 1],
+            w2[:, self.h_len * 1 : self.h_len * 2],
+            w2[:, self.h_len * 2 : self.h_len * 3],
+            w2[:, self.h_len * 3 : self.h_len * 4],
+
+            w3[self.h_len * 0 : self.h_len * 1],
+            w3[self.h_len * 1 : self.h_len * 2],
+            w3[self.h_len * 2 : self.h_len * 3],
+            w3[self.h_len * 3 : self.h_len * 4])
 
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array

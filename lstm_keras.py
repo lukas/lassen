@@ -10,9 +10,15 @@ from keras.callbacks import ModelCheckpoint
 from keras.utils import np_utils
 from keras.models import load_model
 
-hidden_states = 3
+# hard sigmoid function
+def sigmoid(x):
+    x = (0.2 * x) + 0.5
+    x = np.clip(x, 0, 1)
+    return x
+
+hidden_states = 2
 input_dim = 7
-timesteps = 100
+timesteps = 1
 
 model = Sequential()
 model.add(LSTM(hidden_states, input_shape=(timesteps, input_dim)))
@@ -32,15 +38,14 @@ b_f = np.arange(hidden_states) * 0.05 + 0.09
 b_c = np.arange(hidden_states) * 0.05 + 0.001
 b_o = np.arange(hidden_states) * 0.05 + 0.051
 
-u_o = u_o * u_o
+# u_o = u_o * u_o
 
 w1 = np.concatenate([w_i, w_f, w_c, w_o], axis=1)
 w2 = np.concatenate([u_i, u_f, u_c, u_o], axis=1)
 w3 = np.concatenate([b_i, b_f, b_c, b_o], axis=0)
 
-print(w1.shape, w2.shape, w3.shape)
-
 model.set_weights([w1, w2, w3])
+
 print(model.get_weights())
 print([w.shape for w in model.get_weights()])
 h_old = np.zeros(hidden_states)
@@ -49,11 +54,7 @@ c_old = np.array(h_old)
 pred_input = np.arange(timesteps * input_dim).reshape(1,timesteps,input_dim) * 0.05
 
 
-def sigmoid(x):
-    #x = (x * slope) + shift
-    x = (0.2 * x) + 0.5
-    x = np.clip(x, 0, 1)
-    return x
+
 
 for t in range(timesteps):
     x = pred_input[0,t,:]
@@ -77,5 +78,6 @@ for t in range(timesteps):
 
     h_old[:] = h_new
     c_old[:] = c_new
+
 
 print("Expected output", model.predict(pred_input))

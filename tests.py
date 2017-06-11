@@ -304,6 +304,63 @@ class TestNetwork(unittest.TestCase):
         true_sum=147.0
         self.assertEqual(my_sum, true_sum)
 
+    def test_single_lstm_layer(self):
+        """
+        Tests the LSTM layer against a Keras reference implementation.
+        """
+        from keras.models import Sequential
+        from keras.layers import LSTM
+
+        hidden_states = 2
+        input_dim = 7
+        timesteps = 1
+
+        w_i = np.arange(input_dim * hidden_states).reshape(input_dim,hidden_states) * -0.05 + 0.00
+        w_f = np.arange(input_dim * hidden_states).reshape(input_dim,hidden_states) * 0.05 + 0.05
+        w_c = np.arange(input_dim * hidden_states).reshape(input_dim,hidden_states) * -0.05 + 0.02
+        w_o = np.arange(input_dim * hidden_states).reshape(input_dim,hidden_states) * 0.05 + 0.03
+
+        u_i = np.arange(hidden_states * hidden_states).reshape(hidden_states,hidden_states) * -0.05 + 0.04
+        u_f = np.arange(hidden_states * hidden_states).reshape(hidden_states,hidden_states) * 0.05 + 0.05
+        u_c = np.arange(hidden_states * hidden_states).reshape(hidden_states,hidden_states) * -0.05 + 0.06
+        u_o = np.arange(hidden_states * hidden_states).reshape(hidden_states,hidden_states) * 0.05 + 0.07
+
+        b_i = np.arange(hidden_states) * 0.05 + 0.08
+        b_f = np.arange(hidden_states) * 0.05 + 0.09
+        b_c = np.arange(hidden_states) * 0.05 + 0.001
+        b_o = np.arange(hidden_states) * 0.05 + 0.051
+
+        # create the Keras model
+        keras_weights = [
+            np.concatenate([w_i, w_f, w_c, w_o], axis=1),
+            np.concatenate([u_i, u_f, u_c, u_o], axis=1),
+            np.concatenate([b_i, b_f, b_c, b_o], axis=0)]
+        model = Sequential()
+        model.add(LSTM(hidden_states, input_shape=(timesteps, input_dim)))
+        model.set_weights(keras_weights)
+
+        # create the lassen model and test that weights are set correctly
+        lstm = lassen.LSTMLayer(input_dim, hidden_states, timesteps)
+        lstm.set_keras_weights(keras_weights)
+        self.assertTrue(np.array_equal(lstm.w_i,  w_i))
+        self.assertTrue(np.array_equal(lstm.w_f,  w_f))
+        self.assertTrue(np.array_equal(lstm.w_c,  w_c))
+        self.assertTrue(np.array_equal(lstm.w_o,  w_o))
+        self.assertTrue(np.array_equal(lstm.u_i,  u_i))
+        self.assertTrue(np.array_equal(lstm.u_f,  u_f))
+        self.assertTrue(np.array_equal(lstm.u_c,  u_c))
+        self.assertTrue(np.array_equal(lstm.u_o,  u_o))
+        self.assertTrue(np.array_equal(lstm.b_i,  b_i))
+        self.assertTrue(np.array_equal(lstm.b_f,  b_f))
+        self.assertTrue(np.array_equal(lstm.b_c,  b_c))
+        self.assertTrue(np.array_equal(lstm.b_o,  b_o))
+
+        # test that it works properly for one step - keras model
+        pred_input = np.arange(timesteps * input_dim).reshape(1,timesteps,input_dim) * 0.05
+        expected_output = model.predict(pred_input))
+
+        # test that it works properly for one step - our model
+        
 
 class TestKerasNetwork(unittest.TestCase):
     def test_keras_perceptron(self):
