@@ -101,7 +101,8 @@ class DenseLayer(Layer):
         self.weights = weights
 
     def set_keras_weights(self, keras_weights):
-        keras_shape = self.input_dim[1:] + (self.input_dim[0],) + self.output_dim
+        keras_shape = \
+            self.input_dim[1:] + (self.input_dim[0],) + self.output_dim
         input_axes = len(self.input_dim)
         axis_order = \
             (input_axes - 1,) + tuple(range(input_axes - 1)) + (input_axes,)
@@ -136,7 +137,8 @@ class MaxPoolLayer(Layer):
         assert input_shape[0] % pool_shape[0] == 0
         assert input_shape[1] % pool_shape[1] == 0
         self.input_shape = input_shape
-        self.output_shape = tuple(np.divide(input_shape, pool_shape).astype(np.int32))
+        self.output_shape = tuple(np.divide(input_shape, pool_shape)
+            .astype(np.int32))
         self.pool_shape = pool_shape
         self.channels = channels
         input_dim = np.prod(self.input_shape) * channels
@@ -153,7 +155,10 @@ class MaxPoolLayer(Layer):
         )
 
     def forward(self, input):
-        mpi = input.reshape(self.channels, self.input_shape[0], self.input_shape[1])
+        mpi = input.reshape(
+            self.channels,
+            self.input_shape[0],
+            self.input_shape[1])
 
         input = input \
             .reshape((
