@@ -105,11 +105,29 @@ def build_identity_conv_model():
     msimple.layers[0].set_weights(w)
 
 def test_model(model_file):
-    images, one_hot_labels = data.load_mnist("data/train-images-idx3-ubyte", "data/train-labels-idx1-ubyte")
+    test_images, one_hot_test_labels = data.load_test_mnist()
+    num_test_images = test_images.shape[0]
+
+    test_images = test_images.reshape((num_test_images,28,28,1))
 
     model = load_model(model_file)
-    guesses = model.predict(images[:1])
-    print(guesses)
+    print(model.summary())
+
+    num_layers = 7
+    for layer in range(num_layers):
+        if model.layers[layer].get_weights():
+            print("Weights Shape", model.layers[layer].get_weights()[0].shape)
+            if (layer == 5):
+                print("Weights: ", model.layers[layer].get_weights()[0])
+        intermediate_layer_model = Model(inputs=model.input,
+            outputs = model.layers[layer].output)
+        guesses = intermediate_layer_model.predict(test_images[:1])
+        #if layer == 5:
+        print("KERAS Layer %s SUM: %s SHAPE: %s" % \
+            (layer, np.sum(guesses), guesses.shape))
+        #if layer == 3:
+        #    print("Layer %i Output %s" % (layer, guesses))
 
 if __name__ == "__main__":
-    build_small_conv_model()
+#    build_small_conv_model()
+    test_model("small_conv_improved.h5")

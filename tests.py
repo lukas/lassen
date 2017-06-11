@@ -201,10 +201,13 @@ class TestNetwork(unittest.TestCase):
         one_hot_labels = np.array([0,1,0])
         network[0].biases = biases
         network[0].set_weights(weights)
-        network[3].set_weights(np.arange(4.*2*3)
-            .reshape((2,2,2,3))
-            .transpose((2,0,1,3)))
-            # .reshape(2*2*2,3))
+        # network[3].set_weights(np.arange(4.*2*3)
+        #     .reshape((2,2,2,3))
+        #     .transpose((2,0,1,3)))
+        #     # .reshape(2*2*2,3))
+        # print("ghetto weights: ", network[3].weights)
+        # print("ghetto weights sum: ", np.sum(network[3].weights))
+        network[3].set_keras_weights(np.arange(4.0 * 2 * 3))
 
         activations = [image]
         for layer in network:
@@ -318,8 +321,11 @@ class TestKerasNetwork(unittest.TestCase):
     def test_keras_small_conv(self):
         test_images, test_labels = data.load_test_mnist()
         network = weights.load_small_conv('small_conv_improved.h5')
-        acc = dnn_homebrew.accuracy(network, test_images, test_labels)
-        print(acc)
+
+        acc = dnn_homebrew.accuracy(network, test_images[:100], test_labels[:100])
+        self.assertTrue(np.allclose(acc, 0.96, atol = 1e-2))
+
+
 
 
 if __name__ == '__main__':

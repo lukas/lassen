@@ -95,14 +95,18 @@ class DenseLayer(Layer):
         self.biases_gradient = np.zeros(self.biases.shape)
 
     def set_weights(self, weights):
-        assert(weights.shape == self.input_dim + self.output_dim)
+        assert weights.shape == self.input_dim + self.output_dim, \
+            "Setting weights of dim %s which should be %s." % \
+            (str(weights.shape), str(self.input_dim + self.output_dim))
         self.weights = weights
 
     def set_keras_weights(self, keras_weights):
-        input_dims = len(self.input_dim.shape)
+        keras_shape = self.input_dim[1:] + (self.input_dim[0],) + self.output_dim
+        input_axes = len(self.input_dim)
         axis_order = \
-            (input_dims - 1,) + tuple(range(input_dims - 1)) + (input_dims,)
-        self.set_weights(keras_weights.transpose(axis_order))
+            (input_axes - 1,) + tuple(range(input_axes - 1)) + (input_axes,)
+        weights = keras_weights.reshape(keras_shape).transpose(axis_order)
+        self.set_weights(weights)
 
 class ReluLayer(Layer):
     def __init__(self, input_dim):
@@ -234,7 +238,9 @@ class ConvLayer(Layer):
 
     def forward(self, input):
         #input_channels, output_channels = self.weights.shape[:2]
-        assert input.shape == self.input_dim
+        assert input.shape == self.input_dim, \
+            "Input shape %s different than expected dimension %s" % \
+                (input.shape, self.input_dim)
 
         input = input.reshape((self.input_channels,) + self.img_shape)
         output = np.zeros((self.output_channels,) + self.img_shape)
@@ -307,16 +313,13 @@ class ConvLayer(Layer):
         return previous_gradient
 
     def set_weights(self, weights):
+
         assert(weights.shape ==  (self.input_channels, self.output_channels) \
                                   + self.kernel_shape)
         self.weights = weights
 
     def set_keras_weights(self, keras_weights):
-<<<<<<< HEAD
-=======
-        # nothing to do here
->>>>>>> 00f78587a6e9d28b020530d1398122f4afc2ea3c
-        self.set_weights(keras_weights)
+        self.set_weights(keras_weights.transpose(2,3,0,1))
 
 def convolve(matrix, kernel, mode):
     # For some crazy reason, have to invert the kernel array

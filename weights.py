@@ -3,6 +3,7 @@ from tensorflow.python import pywrap_tensorflow
 import h5py
 import nets
 import data
+import dnn_homebrew
 
 def load_weights_from_tensorflow(filename):
     reader = pywrap_tensorflow.NewCheckpointReader(filename)
@@ -40,10 +41,9 @@ def set_layer_weights_keras(network, index, filename, layer_name):
 
     weights, biases = load_layer_weights_from_keras(filename, layer_name)
 
-    network[index].set_layer_weights_keras(weights)
+    network[index].set_keras_weights(weights)
     network[index].biases = biases
 
-    print("Set Weights", index, layer_name, weights.shape, biases.shape, network[index])
 
 def load_three_layer_weights_keras(network, filename):
     set_layer_weights_keras(network, 0, filename, 'conv2d_1')
@@ -63,11 +63,9 @@ def load_perceptron(filename):
 def load_two_layer(filename):
 
     test_images, test_labels = data.load_test_mnist()
-    network = nets.setup_two_layer_beast()
+    network = nets.setup_two_layer_beast(test_images, test_labels)
     weights0, biases0, weights1, biases1 = load_weights_from_keras_two_layer(filename)
-    print("Weight0 shape", weights0.shape)
-    print("Weight1 shape", weights1.shape)
-    print(weights0)
+
     network[0].weights = weights0
     network[0].biases = biases0
     network[2].weights = weights1
@@ -82,6 +80,8 @@ def load_small_conv(filename):
     set_layer_weights_keras(network, 3, filename, 'conv2d_2')
     set_layer_weights_keras(network, 6, filename, 'dense_1')
     set_layer_weights_keras(network, 8, filename, 'final')
+
+
     return network
 
 if __name__ == "__main__":
