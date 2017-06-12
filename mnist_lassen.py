@@ -1,5 +1,5 @@
-from lassen import DenseLayer, SoftmaxLayer, \
-    ReluLayer, MaxPoolLayer, ConvLayer, assert_layer_dimensions_align
+# from lassen import DenseLayer, SoftmaxLayer, \
+#     ReluLayer, MaxPoolLayer, ConvLayer, assert_layer_dimensions_align
 
 def setup_perceptron(images, labels):
     layer0 = DenseLayer(images.shape[1], labels.shape[1])

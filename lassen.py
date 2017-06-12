@@ -1,4 +1,4 @@
-import mnist_data, weights, mnist_lassen
+import mnist_data #, weights, mnist_lassen
 import numpy as np
 
 import ast
@@ -327,13 +327,13 @@ class ConvLayer(Layer):
         self.set_weights(keras_weights.transpose(2,3,0,1))
 
 class LSTMLayer(Layer):
-    def __init__(self, x_len, h_len, timesteps):
+    def __init__(self, x_len, h_len):
         super().__init__(x_len, h_len)
 
         # additional dimensi
         self.x_len = x_len
         self.h_len = h_len
-        self.timesteps = timesteps
+
 
         # weights
         self.w_i = np.zeros((x_len, h_len))
@@ -357,10 +357,9 @@ class LSTMLayer(Layer):
         self.reset_state()
 
     def __str__(self):
-        return "LSTMLayer (%s %s %s)[%s -> %s]" % (
+        return "LSTMLayer (%s %s)[%s -> %s]" % (
             self.x_len,
             self.h_len,
-            self.timesteps,
             self.x_len,
             self.output_dim
         )
@@ -370,11 +369,15 @@ class LSTMLayer(Layer):
         self.h = np.zeros((self.h_len,))
         self.c = np.zeros((self.h_len,))
 
-    def forward(self, input):
-        raise NotImplementedError
+    def forward(self, xs):
+        self.reset_state()
+        for x in xs:
+            self.forward_onestep(x)
 
-    def forward_onestep(self, h_old, c_old, x):
+        return self.h
 
+
+    def forward_onestep(self, x):
         """Advances the lstm forward one step, statefully."""
         # hard sigmoid function
         def sigmoid(x):
@@ -383,16 +386,34 @@ class LSTMLayer(Layer):
             return x
 
         # intermediate "gates"
-        i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i, h_old) + self.b_i)
-        f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f, h_old) + self.b_f)
-        o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o, h_old) + self.b_o)
-
+        # print("Self.h dims", self.h.shape)
+        # print("self.w_i", self.w_i.shape)
+        # print('self.o_u', self.u_i.shape)
+        # print('self.b_i', self.b_i.shape)
+        i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i.T, self.h) + self.b_i)
+        f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f.T, self.h) + self.b_f)
+        o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o.T, self.h) + self.b_o)
+        oldh = self.h
         # new candidate
-        c_tilde = np.tanh(np.dot(self.w_c.T, x) + np.dot(self.u_c, h_old) + self.b_c)
+        c_tilde = np.tanh(np.dot(self.w_c.T, x) + np.dot(self.u_c.T, self.h) + self.b_c)
 
         # update memory state, c, and hidden output, h
-        self.c = i * c_tilde + f * c_old
+        self.c = i * c_tilde + f * self.c
         self.h = o * np.tanh(self.c)
+
+        # print("Lassen i", i)
+        # print("Lassen f", f)
+        # print("Lassen o", o)
+        # print("Lassen c", self.c)
+        # print("Lassen c tilde", c_tilde)
+        # print("Lassen c pre tanh", np.dot(self.w_c.T, x) + np.dot(self.u_c, self.h) + self.b_c )
+        # print("Lassen c h part",  np.dot(self.u_c, oldh))
+        # print("Lassen U_c", self.u_c)
+        # print("Lassen c x part", np.dot(self.w_c.T, x) + self.b_c)
+        # print("Lassen h", self.h)
+        # print("Lassen old h", oldh)
+        #
+        # print("==========/\===========")
 
     def backward(self, activations, gradient):
         raise NotImplementedError
@@ -420,7 +441,6 @@ class LSTMLayer(Layer):
 
     def set_keras_weights(self, keras_weights):
         w1, w2, w3 = keras_weights
-        print("Assertion error:", w1.shape, (self.x_len, self.h_len * 4))
         assert w1.shape == (self.x_len, self.h_len * 4)
         assert w2.shape == (self.h_len, self.h_len * 4)
         assert w3.shape == (self.h_len * 4,)
