@@ -330,10 +330,9 @@ class LSTMLayer(Layer):
     def __init__(self, x_len, h_len):
         super().__init__(x_len, h_len)
 
-        # additional dimensi
+        # additional dimensions
         self.x_len = x_len
         self.h_len = h_len
-
 
         # weights
         self.w_i = np.zeros((x_len, h_len))
