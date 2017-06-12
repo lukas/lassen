@@ -385,35 +385,17 @@ class LSTMLayer(Layer):
             x = np.clip(x, 0, 1)
             return x
 
-        # intermediate "gates"
-        # print("Self.h dims", self.h.shape)
-        # print("self.w_i", self.w_i.shape)
-        # print('self.o_u', self.u_i.shape)
-        # print('self.b_i', self.b_i.shape)
         i = sigmoid(np.dot(self.w_i.T, x) + np.dot(self.u_i.T, self.h) + self.b_i)
         f = sigmoid(np.dot(self.w_f.T, x) + np.dot(self.u_f.T, self.h) + self.b_f)
         o = sigmoid(np.dot(self.w_o.T, x) + np.dot(self.u_o.T, self.h) + self.b_o)
         oldh = self.h
+
         # new candidate
         c_tilde = np.tanh(np.dot(self.w_c.T, x) + np.dot(self.u_c.T, self.h) + self.b_c)
 
         # update memory state, c, and hidden output, h
         self.c = i * c_tilde + f * self.c
         self.h = o * np.tanh(self.c)
-
-        # print("Lassen i", i)
-        # print("Lassen f", f)
-        # print("Lassen o", o)
-        # print("Lassen c", self.c)
-        # print("Lassen c tilde", c_tilde)
-        # print("Lassen c pre tanh", np.dot(self.w_c.T, x) + np.dot(self.u_c, self.h) + self.b_c )
-        # print("Lassen c h part",  np.dot(self.u_c, oldh))
-        # print("Lassen U_c", self.u_c)
-        # print("Lassen c x part", np.dot(self.w_c.T, x) + self.b_c)
-        # print("Lassen h", self.h)
-        # print("Lassen old h", oldh)
-        #
-        # print("==========/\===========")
 
     def backward(self, activations, gradient):
         raise NotImplementedError
